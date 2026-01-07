@@ -32,9 +32,10 @@ body {
     height: 50px;
     width: 100%;
     padding: 0 10px;
-    line-height: 1.2;
-    padding-top: 20px;
+    line-height: 1;
+    padding-top: 25px;
     margin-bottom: 20px;
+    padding-left: 25px;
     resize: none;
     background-color: transparent;
     border: 1px solid grey;
@@ -51,13 +52,15 @@ body {
 
 .fake-placeholder {
     position: absolute;
-    padding-top: 12px;
-    top: 12px;
-    left: 14px;
+    top: 26px;
+    left: 24px;
     font-size: 24px;
     color: grey;
+    opacity: 0.5;
     pointer-events: none;
-    transition: transform 0.35s ease-out, opacity 0.35s ease-out;
+    transition:
+        transform 0.25s ease-out,
+        opacity 0.35s ease-out;
     font-family: monospace;
 }
 
@@ -69,6 +72,11 @@ body {
 .fake-placeholder.enter {
     transform: translateY(-20px);
     opacity: 0;
+}
+
+.fake-placeholder.counter {
+    transform: translate(calc(100% - 25px), 0);
+    right: 50px;
 }
 
 .textfield::placeholder {

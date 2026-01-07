@@ -5,34 +5,58 @@ const greetings = [
     "〜てください」を使ってみましょう",
     "水を飲んでください"
 ];
+let idx = 0;
 
 const textarea = document.querySelector(".textfield");
-const fakePlaceholder = document.querySelector(".fake-placeholder");
-const cycleInterval = 3000; // in ms
+const placeholder = document.querySelector(".fake-placeholder");
+const cycleInterval = 4000; // in ms
+const capacity = 50; // characters
 
-let index = 0;
+let typing = false;
+let timeout = null;
 
-fakePlaceholder.textContent = greetings[index];
+placeholder.textContent = greetings[idx];
 
 function cycle_placeholder() {
-    fakePlaceholder.classList.add("exit");
+    if (typing) return;
 
-    setTimeout(() => {
-        index = (index + 1) % greetings.length;
-        fakePlaceholder.textContent = greetings[index];
+    placeholder.classList.add("exit");
 
-        fakePlaceholder.classList.remove("exit");
-        fakePlaceholder.classList.add("enter");
+    timeout = setTimeout(() => {
+        if (typing) return; // guards against cycle race condition
+
+        idx = (idx + 1) % greetings.length;
+        placeholder.textContent = greetings[idx];
+
+        placeholder.classList.remove("exit");
+        placeholder.classList.add("enter");
 
         requestAnimationFrame(() => {
-            fakePlaceholder.classList.remove("enter");
+            placeholder.classList.remove("enter");
         });
     }, 350);
 }
 
 setInterval(cycle_placeholder, cycleInterval);
 
-// hide placeholder when typing
-textarea.addEventListener("input", () => {
-    fakePlaceholder.style.opacity = textarea.value ? "0" : "1";
+
+textarea.addEventListener("input", (event) => {
+    const value = event.target.value;
+    const length = value.length;
+
+    typing = length > 0;
+
+    if (typing) {
+        if (timeout) {
+            clearTimeout(timeout);
+            timeout = null;
+        }
+
+        placeholder.classList.remove("exit", "enter");
+        placeholder.classList.add("counter");
+        placeholder.textContent = `(${length}/${capacity})`;
+    } else {
+        placeholder.classList.remove("counter");
+        placeholder.textContent = greetings[idx];
+    }
 });
