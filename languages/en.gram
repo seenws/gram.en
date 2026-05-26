@@ -1,0 +1,115 @@
+# =============================================================================
+# en.gram  --  English grammar fragment (PATR-style unification grammar)
+# =============================================================================
+#
+# A context-free backbone annotated with feature equations. Grammaticality =
+# an S parse exists whose feature equations all unify. Errors are surfaced by
+# the equation that fails to unify (tagged with `!`), or by a mal-rule (`%mal`)
+# matching a known wrong pattern.
+#
+# Syntax
+# ------
+#   lexicon entry : form : CAT  <path>=value ...
+#   rule          : LHS -> RHS RHS ...
+#                   <path> = <path>     # unify two constituents' substructures
+#                   <path> = value      # constrain a feature to an atomic value
+#   diagnostic    : append  ! "message"  fix: strategy | strategy   to an equation;
+#                   reported (with the constituents in the equation highlighted)
+#                   when relaxing exactly that constraint rescues the parse.
+#   mal-rule      : %mal LHS -> RHS ...   with *ERR "message" and *FIX ...
+#
+# Feature values are atomic for this first slice (no disjunction/sets).
+# An unset feature unifies with anything (underspecification).
+#
+# Features:
+#   num  = sg | pl          number
+#   pers = 1 | 2 | 3        person
+#   case = nom | acc        pronoun case (subject vs object)
+#   vagr = 3sg | n3sg       subject-verb agreement contrast (see note below)
+#
+# Note on `vagr`: English present-tense agreement only contrasts 3rd-person-
+# singular ("barks") with everything else ("bark"). "Everything else" is
+# disjunctive (num=pl OR pers!=3), which atomic unification can't state, so each
+# noun/pronoun carries a precomputed atomic `vagr` and verbs require a subject
+# `vagr`. Agreement is then plain equality. Revisit when a disjunctive value
+# type exists.
+# =============================================================================
+
+
+# ----- Lexicon ---------------------------------------------------------------
+
+# Determiners            ( `the` is unmarked for number; a/an mark the sound of
+#                          the following noun: consonant vs vowel )
+the   : Det
+a     : Det  <num>=sg  <initial>=cons
+an    : Det  <num>=sg  <initial>=vowel
+this  : Det  <num>=sg
+these : Det  <num>=pl
+
+# Nouns         num       pers      vagr         initial       lemma
+dog    : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=dog
+dogs   : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=dog
+cat    : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=cat
+cats   : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=cat
+bark   : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=bark  # also a verb (ambiguous, notes 13)
+barks  : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=bark
+
+# Pronouns       num       pers      case        vagr         lemma
+I      : Pron  <num>=sg  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1sg
+me     : Pron  <num>=sg  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1sg
+he     : Pron  <num>=sg  <pers>=3  <case>=nom  <vagr>=3sg   <lemma>=pron.3sg.m
+him    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.m
+they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
+them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
+
+# Verbs            required subject vagr      lemma
+bark   : V  <vagr>=n3sg  <lemma>=bark   # base form (present): I/you/we/they bark
+barks  : V  <vagr>=3sg   <lemma>=bark   # 3sg form  (present): he/she/it barks
+like   : V  <vagr>=n3sg  <lemma>=like
+likes  : V  <vagr>=3sg   <lemma>=like
+chased : V  <lemma>=chase              # past tense: no subject agreement -> vagr unset
+
+
+# ----- Grammar rules ---------------------------------------------------------
+
+S -> NP VP
+    <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
+    <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
+
+NP -> Det N
+    <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
+    <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+NP -> N
+    <N num>   = pl          # bare plural only; blocks bare singular count nouns (*"dog barks")
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+NP -> Pron
+    <NP num>  = <Pron num>
+    <NP pers> = <Pron pers>
+    <NP case> = <Pron case>
+    <NP vagr> = <Pron vagr>
+
+VP -> V
+    <VP vagr> = <V vagr>
+
+VP -> V NP
+    <VP vagr> = <V vagr>
+    <NP case> = acc         ! "the object must be an accusative pronoun"  fix: accusative-pronoun
+# A Det-N NP sets no `case`, so it stays open and fills subject or object
+# position freely; only pronouns can clash on case.
+
+
+# ----- Mal-rules (word order) ------------------------------------------------
+# Word-order errors yield *no parse* from the backbone, and "no parse" is not a
+# diagnosis (the coverage trap). Anticipated misorderings are caught explicitly.
+# This family is open-ended: prefer a few targeted mal-rules over exhaustiveness.
+
+%mal S -> V NP
+    *ERR "word order: English clauses are subject-verb-object; the verb appears before its subject"
+    *FIX reorder to "<NP> <V>"        # "barks the dog" -> "the dog barks"

@@ -1,4 +1,22 @@
-notes/**
-!notes/**/*.pdf
+# Dependencies
+node_modules/
+
+# Build output.
+# NOTE: index.html loads dist/engine.js at runtime. If you deploy the static
+# site straight from the repo (e.g. GitHub Pages) with no build step, either
+# un-ignore dist/ or build it in CI.
+dist/
+
+# LaTeX build artifacts (the notes/ .tex source and rendered .pdf stay tracked)
 *.aux
-package.json
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# OS / editor cruft
+.DS_Store
+*.swp
+*~

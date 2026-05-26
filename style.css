@@ -11,16 +11,38 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #080808;
+    background-color: #08080a;
+    background-image: radial-gradient(circle at 50% 32%, #16161c 0%, #08080a 68%);
+    color: #d6d6da;
 }
 
 .container {
-    width: 50%;
-    height: 50%;
+    width: min(560px, 90%);
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    gap: 22px;
+}
+
+.masthead {
+    text-align: center;
+}
+
+.title {
+    margin: 0;
+    color: #ececef;
+    font-family: monospace;
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: 4px;
+}
+
+.subtitle {
+    margin: 8px 0 0;
+    color: #6b6b73;
+    font-family: monospace;
+    font-size: 13px;
+    letter-spacing: 0.3px;
 }
 
 .textarea-wrapper {
@@ -37,17 +59,21 @@ body {
     margin-bottom: 20px;
     padding-left: 25px;
     resize: none;
-    background-color: transparent;
-    border: 1px solid grey;
+    background-color: #0e0e12;
+    border: 1px solid #2b2b33;
     border-radius: 10px;
     font-size: 24px;
-    color: grey;
-    cursor: default;
+    color: #d8d8de;
+    caret-color: #6ea8fe;
+    cursor: text;
     font-family: monospace;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .textfield:focus {
     outline: none;
+    border-color: #464654;
+    box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.12);
 }
 
 .fake-placeholder {
@@ -55,8 +81,8 @@ body {
     top: 26px;
     left: 24px;
     font-size: 24px;
-    color: grey;
-    opacity: 0.5;
+    color: #57575f;
+    opacity: 0.85;
     pointer-events: none;
     transition:
         transform 0.25s ease-out,
@@ -85,30 +111,150 @@ body {
     line-height: 60px;
 }
 
-.switches {
+.lang {
     display: flex;
     justify-content: center;
-    width: 100%;
-    margin-bottom: 20px;
-    gap: 10px;
 }
 
-.switch-input {
+.lang-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border: 1px solid #2b2b33;
+    border-radius: 999px;
+    background-color: #141418;
+    color: #b8b8c0;
+    font-family: monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.lang-badge::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background-color: #3aa675;
+}
+
+/* --- grammar analysis overlay -------------------------------------------- */
+
+/* The textfield shows the real (grey) text; sits below the overlay. */
+.textfield {
+    position: relative;
+    z-index: 1;
+}
+
+/* Underline overlay: mirrors the textfield's box exactly so its (transparent)
+   text lines up character-for-character with the text beneath. Only error
+   spans paint, and only those are clickable; everything else lets clicks and
+   the caret pass through to the textfield. */
+.highlights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    box-sizing: content-box;
+    width: 100%;
+    height: 50px;
+    margin: 0;
+    padding: 0 10px;
+    padding-top: 25px;
+    padding-left: 25px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    font-family: monospace;
+    font-size: 24px;
+    line-height: 1;
+    color: transparent;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+
+.highlights .err {
+    pointer-events: auto;
+    cursor: pointer;
+    background-color: rgba(229, 72, 77, 0.10);
+    border-radius: 3px;
+    text-decoration: underline wavy #e5484d;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+}
+
+.fake-placeholder {
+    z-index: 3;
+}
+
+/* Popover anchored under a clicked error span. */
+.popover {
+    position: absolute;
+    z-index: 5;
+    max-width: 320px;
+    padding: 10px 12px;
+    background-color: #161616;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    color: #dddddd;
+    font-family: monospace;
+    font-size: 13px;
+    pointer-events: auto;
+}
+
+.popover[hidden] {
     display: none;
 }
 
-.switch-label {
-    padding: 10px 20px;
-    text-align: center;
-    border: 1px solid black;
-    border-radius: 20px;
-    background-color: #eee;
-    cursor: pointer;
-    transition: background-color 0.3s;
-    font-family: monospace;
+.popover .msg {
+    margin-bottom: 4px;
 }
 
-.switch-input:checked + .switch-label {
-    background-color: #313131;
-    color: white;
+.popover .rule {
+    color: #777777;
+    font-size: 11px;
+}
+
+.popover .fixes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.popover .fixes button {
+    padding: 4px 8px;
+    background-color: #222222;
+    border: 1px solid #444444;
+    border-radius: 6px;
+    color: #dddddd;
+    font-family: monospace;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.popover .fixes button:hover {
+    background-color: #2c2c2c;
+    border-color: #e5484d;
+}
+
+/* Subtle status line under the field. */
+.status {
+    min-height: 1.2em;
+    margin-top: 4px;
+    color: #777777;
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.status.ok {
+    color: #3aa675;
+}
+
+.status.bad {
+    color: #e5775a;
 }

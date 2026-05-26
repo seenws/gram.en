@@ -1,10 +1,14 @@
 {
   "name": "grammar",
   "version": "1.0.0",
-  "description": "",
+  "description": "Rule-based grammatical analysis engine",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "analyze": "node --experimental-strip-types src/cli.ts",
+    "build": "esbuild src/browser.ts --bundle --format=iife --global-name=GrammarEngine --loader:.gram=text --outfile=dist/engine.js",
+    "serve": "node --experimental-strip-types scripts/serve.ts"
   },
   "repository": {
     "type": "git",
@@ -13,9 +17,11 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/BolvarsDad/grammar/issues"
   },
-  "homepage": "https://github.com/BolvarsDad/grammar#readme"
+  "homepage": "https://github.com/BolvarsDad/grammar#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
 }

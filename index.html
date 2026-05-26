@@ -4,34 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>Document</title>
+    <title>grammar</title>
 </head>
 <body>
     <main class="screen">
         <div class="container">
+            <header class="masthead">
+                <h1 class="title">grammar</h1>
+                <p class="subtitle">type a sentence &mdash; grammatical issues get underlined</p>
+            </header>
+
             <div class="textarea-wrapper">
                 <textarea class="textfield" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="50"></textarea>
+                <!-- underline overlay: transparent text, only error spans show -->
+                <div class="highlights" aria-hidden="true"></div>
                 <div class="fake-placeholder"></div>
+                <!-- popover anchored under a clicked error span -->
+                <div class="popover" hidden></div>
             </div>
 
-            <div class="content">
-                <div class="switches">
-                    <input type="radio" id="switch1" name="switch-group" class="switch-input" checked>
-                    <label for="switch1" class="switch-label">Japanese</label>
-                    <input type="radio" id="switch2" name="switch-group" class="switch-input">
-                    <label for="switch2" class="switch-label">Swedish</label>
-                    <input type="radio" id="switch3" name="switch-group" class="switch-input">
-                    <label for="switch3" class="switch-label">English</label>
-                    <input type="radio" id="switch4" name="switch-group" class="switch-input">
-                    <label for="switch4" class="switch-label">Russian</label>
-                </div>
+            <div class="status" role="status" aria-live="polite"></div>
+
+            <div class="lang">
+                <span class="lang-badge">English</span>
             </div>
         </div>
     </main>
 
-    <footer class="footer">
+    <footer class="footer"></footer>
 
-    </footer>
+    <!-- engine bundle (global GrammarEngine), then the page logic -->
+    <script src="dist/engine.js"></script>
     <script src="index.js"></script>
 </body>
 </html>

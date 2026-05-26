@@ -1,0 +1,686 @@
+\documentclass[11pt]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage[hidelinks]{hyperref}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+\newcommand{\Star}[1]{{#1}^{*}}
+\newcommand{\derives}{\Rightarrow}
+\newcommand{\derivesstar}{\Rightarrow^{*}}
+\newcommand{\Reg}{\textsf{Reg}}
+\newcommand{\CF}{\textsf{CF}}
+\newcommand{\CS}{\textsf{CS}}
+\newcommand{\RE}{\textsf{RE}}
+
+\title{Notes on Grammatical Analysis}
+\author{Sinan Olsson-Pasic}
+\date{January 9, 2026\\[2pt]\small(revised May 26, 2026)}
+
+\begin{document}
+\maketitle
+
+The following are a collection of notes that I'm documenting during my
+development and learning process of my grammatical analysis engine.
+
+\section{What is a language?}
+
+A language to a computer scientist is a possibly infinite set of sentences,
+each made up of ``tokens'' (words), and each token made up of ``symbols''
+(letters). Or in other words, a language is a subset $\Star{\Sigma}$ for some
+alphabet $\Sigma$. Which ``sentences'' belong to a ``language'' and which
+``tokens'' make up those ``sentences'' is explained by the definition of a
+generative grammar for the language.
+
+A generative grammar is a 4-tuple $(V_N, V_T, R, S)$ such that:
+\begin{enumerate}
+  \item $V_N$ and $V_T$ are finite sets of symbols.
+  \item $V_N \cap V_T = \emptyset$
+  \item $R$ is the set of pairs $(P, Q)$ such that:
+    \begin{enumerate}
+      \item $P \in \Star{(V_N \cup V_T)}{}^{+}$
+      \item $Q \in \Star{(V_N \cup V_T)}$
+    \end{enumerate}
+  \item $S \in V_N$
+\end{enumerate}
+
+Where $V_N$ is the set of non-terminals, $V_T$ is the set of terminals, $R$ is
+the set of rules, and $S$ is the start symbol. $\emptyset$ denotes the empty
+set, meaning the intersection of the terminals and nonterminals returns no
+element.
+
+A language $L$ bound by a grammar $G$ therefore is defined as:
+\begin{equation}
+  L(G) = \{\, w \in \Star{V_t} \mid S \derivesstar w \,\}
+\end{equation}
+
+All of this is to say that a generative grammar gives us the specification of
+how sentences for a language is constructed rather than listing the valid
+sentences. This allows us to describe infinite languages using finite
+information.
+
+\subsection{On the derivation relation}
+
+The arrow $\derivesstar$ hides the mechanism of generation, so it's worth
+unfolding. A rule $(P, Q) \in R$ licenses one rewriting step: a string
+$\alpha P \beta$, with the pattern $P$ sitting in some context $\alpha, \beta$,
+becomes $\alpha Q \beta$. Call this one-step relation $\derives$.
+
+\begin{definition}[Derivation]
+$\derives \, \subseteq \Star{(V_N \cup V_T)} \times \Star{(V_N \cup V_T)}$ is
+the relation with $\alpha P \beta \derives \alpha Q \beta$ whenever
+$(P,Q) \in R$. Its reflexive--transitive closure is $\derivesstar$:
+$\alpha \derivesstar \gamma$ holds iff $\alpha = \gamma$ or there is a finite
+chain $\alpha = \gamma_0 \derives \gamma_1 \derives \cdots \derives \gamma_k =
+\gamma$.
+\end{definition}
+
+So $\derivesstar$ is $\derives$ applied any finite number of times, and $L(G)$
+collects exactly the terminal strings reachable from $S$ this way. Membership of
+$w$ in $L(G)$ is an existential statement: it asserts that \emph{some}
+derivation exists. The same $w$ may have many derivations, or none. A
+derivation is a proof of membership; its absence is the stronger claim that no
+proof exists.
+
+\subsection{A note on infinite languages and descriptions}
+
+Is it possible to give a description for every language? The answer is no. The
+reason is a counting argument.
+
+\begin{theorem}[Almost every language is indescribable]
+Over a finite alphabet $\Sigma$ there are uncountably many languages but only
+countably many grammars. So the languages that admit any finite description are
+a vanishing fraction of all languages.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+$\Star{\Sigma}$ is countable: list strings by length, then alphabetically, for a
+bijection with $\mathbb{N}$, so $|\Star{\Sigma}| = \aleph_0$. A language is any
+subset, so the languages form the power set, and
+$|\mathcal{P}(\Star{\Sigma})| = 2^{\aleph_0} > \aleph_0$ by Cantor's theorem ---
+uncountably many. (Diagonally: any list $L_0, L_1, \dots$ misses
+$D = \{ w_i \mid w_i \notin L_i \}$, which disagrees with each $L_i$ on the
+$i$-th string $w_i$.) A grammar is a finite object --- finite $V_N, V_T, R$ ---
+hence writable as a finite string, and the finite strings over a fixed alphabet
+are countable. Countably many descriptions cannot name uncountably many
+languages.
+\end{proof}
+
+The same bound applies to Turing machines, regular expressions, or descriptions
+of any finitary kind. So the grammar hierarchy below sits entirely inside the
+countable sliver of describable languages. The question is never whether an
+arbitrary language can be described, but how much descriptive power natural
+languages demand, and what that power costs.
+
+\section{The Chomsky hierarchy}
+
+The 4-tuple above places no restriction on the shape of a rule: any nonempty
+$P$ may rewrite to any $Q$. Restricting that shape carves out a sequence of
+grammar classes, each weaker than the last and each cheaper to decide.
+
+\begin{definition}[The four grammar types]
+A grammar $(V_N, V_T, R, S)$ is:
+\begin{enumerate}
+  \item \textbf{Type 0 (recursively enumerable).} No restriction: any $(P,Q)$
+        with $P \in \Star{(V_N \cup V_T)}{}^{+}$.
+  \item \textbf{Type 1 (context-sensitive).} Every rule is non-contracting,
+        $|P| \le |Q|$; equivalently of the form
+        $\alpha A \beta \to \alpha \gamma \beta$ with $A \in V_N$,
+        $\gamma \neq \varepsilon$.
+  \item \textbf{Type 2 (context-free).} Every left-hand side is a single
+        nonterminal: $A \to Q$.
+  \item \textbf{Type 3 (regular).} Every rule is right-linear: $A \to aB$ or
+        $A \to a$.
+\end{enumerate}
+\end{definition}
+
+The names are literal. Context-free: a nonterminal rewrites regardless of its
+neighbors. Context-sensitive: the frame $\alpha\,\underline{\phantom{A}}\,\beta$
+must be present for the rewrite to fire. The content is not the rule syntax but
+the machine each class corresponds to.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llll@{}}
+\toprule
+Type & Class & Recognizer & Memory \\
+\midrule
+0 & recursively enumerable & Turing machine & unbounded tape \\
+1 & context-sensitive & linear-bounded automaton & tape linear in input \\
+2 & context-free & pushdown automaton & a single stack \\
+3 & regular & finite automaton & none \\
+\bottomrule
+\end{tabular}
+\caption{Grammar power tracks memory.}
+\end{table}
+
+Each grammar class is generated exactly by machines with a fixed memory budget.
+No memory tracks only a bounded amount of information; one stack matches nested
+brackets but cannot compare three counts at once; unbounded tape recognizes
+anything recognizable. The classes nest strictly:
+\[
+  \Reg \subsetneq \CF \subsetneq \CS \subsetneq \RE,
+\]
+with $\{a^n b^n\} \in \CF \setminus \Reg$ and
+$\{a^n b^n c^n\} \in \CS \setminus \CF$. The containments are immediate from the
+definitions; the strictness is what the pumping lemmas of Section~4 establish.
+These two sets are the abstract shapes that natural-language dependencies turn
+out to take.
+
+\section{The membership problem}
+
+The question a grammar checker actually asks is membership: given $w$, is
+$w \in L(G)$? The hierarchy answers it at every rung, and the answers set the
+budget for any checker.
+
+\begin{theorem}[Cost of membership]\label{thm:cost}
+For fixed $G$ and input length $n$: regular is $O(n)$; context-free is $O(n^3)$;
+context-sensitive is \textsf{PSPACE}-complete; type 0 is undecidable.
+\end{theorem}
+
+\begin{proof}[Proof sketches]
+\emph{Regular.} A DFA reads each symbol once; acceptance is a final table
+lookup.
+
+\emph{Context-free.} CKY (in Chomsky normal form, $A \to BC$ or $A \to a$) fills
+a triangular table $T[i,j]$ of all nonterminals deriving the length-$j$
+substring at position $i$: $O(n^2)$ cells, each tried against $O(n)$ split
+points, so $O(n^3 |G|)$. Then $w \in L(G)$ iff $S \in T[1,n]$. The table also
+records every parse, not just the verdict. (Valiant pushes the constant toward
+matrix-multiplication time, $\approx O(n^{2.37})$.)
+
+\emph{Context-sensitive.} A linear-bounded automaton uses tape linear in $n$, so
+each configuration fits in polynomial space; configuration reachability is in
+\textsf{PSPACE}, with a matching reduction for completeness.
+
+\emph{Type 0.} A derivation can simulate an arbitrary Turing machine, so
+deciding $S \derivesstar w$ would decide halting.
+\end{proof}
+
+A fully general grammar is therefore not merely expensive but unanswerable. A
+workable checker has to sit at or near context-free: expressive enough for real
+structure, cheap enough to decide in polynomial time. One distinction is needed
+before going further.
+
+\begin{definition}[Weak vs.\ strong generative capacity]
+The \emph{weak} capacity of $G$ is the string set $L(G)$; the \emph{strong}
+capacity is the set of parse trees it assigns. Grammars are weakly equivalent
+when they generate the same strings, even with different trees.
+\end{definition}
+
+Deciding ``grammatical?'' is a weak-capacity question. Locating and naming an
+error is a strong-capacity one: pointing at ``the verb phrase'' needs the right
+tree, not just the right yes/no.
+
+\section{Where natural language sits}
+
+Two results fix the position of natural language. Both are pumping arguments,
+so state the tools first.
+
+\subsection{Not regular}
+
+\begin{lemma}[Regular pumping]
+If $L$ is regular, some $p \ge 1$ has: every $s \in L$ with $|s| \ge p$ factors
+as $s = xyz$, $|xy| \le p$, $|y| \ge 1$, and $x y^i z \in L$ for all $i \ge 0$.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+Let $p$ be the number of DFA states. A string of length $\ge p$ revisits some
+state (pigeonhole); the loop $y$ between the two visits can be traversed any
+number of times while staying on an accepting run.
+\end{proof}
+
+\begin{proposition}
+$\{a^n b^n\}$ is not regular.
+\end{proposition}
+
+\begin{proof}
+With $s = a^p b^p$ and $|xy| \le p$, the block $y$ is all $a$'s, so $xy^2z$ has
+more $a$'s than $b$'s and leaves the language.
+\end{proof}
+
+Center embedding gives this shape in natural language: ``the rat [the cat [the
+dog chased] killed] ate'' nests matching dependencies that count like
+$a^n b^n$. A finite-state device has no stack to count nesting depth, so natural
+language needs at least a stack --- at least context-free (Chomsky, 1956).
+
+\subsection{Not context-free}
+
+\begin{lemma}[Context-free pumping]
+If $L$ is context-free, some $p \ge 1$ has: every $z \in L$ with $|z| \ge p$
+factors as $z = uvwxy$, $|vwx| \le p$, $|vx| \ge 1$, and $u v^i w x^i y \in L$
+for all $i \ge 0$.
+\end{lemma}
+
+\begin{proof}[Proof sketch]
+A long enough $z$ forces a root-to-leaf path in its parse tree longer than
+$|V_N|$, so some nonterminal repeats on that path. The subtree between the two
+occurrences can be excised or duplicated, pumping the frontier pieces $v$ and
+$x$ together; capping the lower occurrence's height bounds $|vwx|$.
+\end{proof}
+
+\begin{proposition}
+$\{a^n b^n c^n\}$ and the copy language $\{ww\}$ are not context-free.
+\end{proposition}
+
+\begin{proof}
+For $z = a^p b^p c^p$, the window $vwx$ spans at most two of the three blocks,
+so pumping changes at most two counts and breaks the equality. The same
+straddling argument breaks $\{ww\}$, which is the abstract form of a
+\emph{crossing} rather than nesting dependency.
+\end{proof}
+
+Whether natural language stays context-free was open for decades and settled by
+Shieber (1985), using cross-serial dependencies in Swiss German subordinate
+clauses: a block of case-marked noun phrases followed by a block of verbs, where
+each verb must match the correspondingly-placed noun phrase in case --- so the
+dependencies cross.
+
+\begin{theorem}[Shieber 1985]
+Some natural language has a string set that is not context-free.
+\end{theorem}
+
+\begin{proof}[Proof architecture]
+Context-free languages are closed under intersection with regular languages and
+under homomorphism. For Swiss German $D$, a suitable regular $R$ and
+homomorphism $h$ give
+\[
+  h(D \cap R) = \{\, a^m\, b^n\, c^m\, d^n \mid m,n \ge 0 \,\},
+\]
+where $a,b$ are the two case classes of noun phrase and $c,d$ the verbs that
+govern them; crossing forces the interleaved matched counts. Pumping shows this
+set is not context-free, and since $\CF$ is closed under the operations used,
+$D$ cannot be context-free either.
+\end{proof}
+
+So natural language is strictly above context-free, but only just. Joshi (1985)
+named the target class.
+
+\begin{definition}[Mildly context-sensitive]
+A language class is mildly context-sensitive if it contains the context-free
+languages, captures limited cross-serial dependencies, has the constant-growth
+property (the length set $\{|w| : w \in L\}$ is semilinear, ruling out
+$\{a^{2^n}\}$), and is parsable in polynomial time.
+\end{definition}
+
+\begin{theorem}[Vijay-Shanker \& Weir 1994]
+Tree-Adjoining Grammar, Combinatory Categorial Grammar, Linear Indexed Grammar,
+and Head Grammar are weakly equivalent --- one class, properly above
+context-free, inside the mildly context-sensitive region.
+\end{theorem}
+
+Four independently motivated formalisms generating one class is good evidence
+the class is natural. The cost shows in parsing: TAG recognition is $O(n^6)$,
+polynomial but visibly dearer than $O(n^3)$. In practice a context-free skeleton
+plus features covers almost everything worth checking, and the genuinely
+cross-serial constructions are rare enough to set aside.
+
+\section{From generation to constraints}
+
+The grammars above generate: start at $S$ and rewrite down to $w$. The
+constraint-based frameworks (HPSG, LFG) invert this, a view called
+model-theoretic syntax (Pullum \& Scholz, 2001): a grammar is not a device that
+produces strings but a set of constraints a structure must satisfy.
+Grammaticality becomes the existence of a structure for $w$ satisfying every
+constraint.
+
+A violated constraint is local --- it concerns particular constituents --- and
+named --- it is a particular constraint. That is what makes error reporting
+possible at all, rather than a bare yes/no. The machinery is feature structures
+and unification.
+
+\begin{definition}[Feature structure]
+A rooted, connected, directed acyclic graph with feature-labelled arcs and
+atomic leaf values, sharing of substructure allowed (reentrancy). Equivalently a
+partial function from feature paths to values, e.g.
+$[\, \textsf{cat}\!:\textsf{noun},\ \textsf{num}\!:\textsf{sg},\
+\textsf{pers}\!:3,\ \textsf{case}\!:\textsf{nom}\,]$.
+\end{definition}
+
+\begin{definition}[Subsumption and unification]
+$F \sqsubseteq G$ (\,$F$ subsumes $G$\,) when $G$ carries all of $F$'s
+information and perhaps more --- $F$ is more general. The unification
+$F \sqcup G$ is the least upper bound in this order: the most general structure
+holding the information of both.
+\end{definition}
+
+\begin{theorem}[Unification is a lattice join]
+Under subsumption, feature structures form a lattice once a top element $\top$
+(inconsistency) is adjoined. $F \sqcup G$ always exists and equals $\top$
+exactly when $F$ and $G$ conflict on some shared path.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+Compatible information merges to a unique least refinement, computed by a graph
+merge (union--find over the two DAGs, identifying nodes reached by the same
+path). Two paths demanding distinct atomic values --- $\textsf{num}\!:
+\textsf{sg}$ against $\textsf{num}\!:\textsf{pl}$ --- have no consistent
+refinement, so the join is $\top$: unification fails.
+\end{proof}
+
+Agreement is enforced by unifying the relevant constituents' feature structures.
+A subject with $\textsf{num}\!:\textsf{sg}$ against a verb with $\textsf{num}\!:
+\textsf{pl}$ unifies to $\top$: the parse fails, and the failure says which two
+constituents clashed and on which feature. That is the gap between a yes/no
+acceptor and one that can report a verb disagreeing with its singular subject.
+Kasper and Rounds (1986) gave this a logical semantics, so rules read as
+constraints rather than ad hoc checks; the verdict and the diagnosis come from
+one mechanism.
+
+\section{Gradience and the coverage trap}
+
+Two cracks in the purely formal program shaped the field afterward.
+
+First, grammaticality is binary but acceptability is graded (the familiar ``?'',
+``??'', ``*''). This drove weighted grammars. A probabilistic context-free
+grammar attaches a probability to each production $A \to \beta$ with
+$\sum_\beta P(A \to \beta) = 1$; a tree's probability is the product of its
+productions, and probabilistic CKY returns the most likely tree. The field then
+moved to data-driven statistical parsing and, now, neural sequence models;
+modern grammatical error correction is sequence-to-sequence, not rule-based,
+because it tolerates gradience and gaps.
+
+Second, and crucially, the coverage caveat is formal, not incidental. A grammar
+$G$ defines $L(G)$, but any hand-built $G$ is incomplete, so
+\[
+  \neg\big(w \in L(G)\big) \;\neq\; \text{``$w$ is ungrammatical.''}
+\]
+No parse may mean only that $G$ does not yet cover $w$. Treating ``no parse'' as
+``error'' manufactures false positives. So a checker reads failure as
+\emph{unrecognized}, not \emph{ungrammatical}: it reports violated constraints
+it knows (with targeted error rules, or explicit mal-rules that match specific
+wrong patterns), never the bare absence of a parse.
+
+\section{Constraints on the rule design}
+
+What the theory dictates, collected:
+\begin{itemize}
+  \item Anchor at the context-free level --- membership must be decidable and
+        polynomial (Theorem~\ref{thm:cost}).
+  \item Natural language exceeds context-free only mildly, on rare cross-serial
+        constructions; defer them.
+  \item Use feature structures and unification for agreement, government, and
+        case; a unification failure already localizes and names the error.
+  \item Scope the negative verdict honestly: report violated known constraints,
+        never the absence of a parse.
+\end{itemize}
+
+\section{The engine as a pipeline}
+
+Membership and diagnosis are computed in stages, each a function from one
+representation to the next:
+
+\begin{verbatim}
+  text -> tokenizer -> morphology -> lexicon -> parser(+unification)
+       -> error detection -> report
+\end{verbatim}
+
+\begin{enumerate}
+  \item \textbf{Tokenizer.} Raw string $\to$ sequence of tokens.
+  \item \textbf{Morphology.} Each token $\to$ (lemma, morphological features),
+        possibly several analyses.
+  \item \textbf{Lexicon.} Each analysis $\to$ a category and a feature
+        structure.
+  \item \textbf{Parser.} Tokens $\to$ constituent structure over a context-free
+        backbone, unifying features as it builds (Section~3 fixes this at the
+        context-free level for decidability).
+  \item \textbf{Error detection.} Unification failures and matched error
+        patterns $\to$ localized violations.
+  \item \textbf{Report.} Violations $\to$ highlighted span, named rule,
+        suggested fix.
+\end{enumerate}
+
+The pipeline is mostly language-independent; the lexicon, the morphology, and
+the rule set are the language-specific data it runs on. Stages 1--3 are where
+ambiguity enters --- a token may have several analyses --- and the parser
+resolves it by keeping only the analyses that fit into a structure.
+
+\section{Tokenization}
+
+The tokenizer realizes a map $\Star{\Sigma} \to \Star{T}$ from the symbol string
+to a token sequence over a vocabulary $T$. For space-delimited languages
+(English, Swedish) whitespace and punctuation carry most of the work, but the
+map is not trivial: contractions split (\texttt{don't} $\to$ \texttt{do} +
+\texttt{n't}), clitics and hyphenates need a policy, and punctuation attaches
+ambiguously. For languages written without spaces (Japanese) segmentation is the
+hard part --- word boundaries are ambiguous and must be recovered by dictionary
+longest-match or a statistical model. Tokenization can itself be ambiguous, so
+it is better treated as a relation than a function, with the ambiguity passed
+downstream rather than resolved prematurely.
+
+\section{Morphological analysis}
+
+A word form decomposes into morphemes: a stem plus affixes. Inflectional
+morphology marks features --- number, person, tense, case, gender --- without
+changing category; derivational morphology changes it. The analyzer maps a
+surface form to one or more (lemma, features) pairs:
+
+\begin{verbatim}
+  bark  ->  (bark, V, pres, agr != 3sg)     # "they bark"
+  bark  ->  (bark, N, num=sg)               # "a bark"
+  barks ->  (bark, V, pres, agr  = 3sg)     # "it barks"
+  barks ->  (bark, N, num=pl)               # "two barks"
+\end{verbatim}
+
+Morphology is regular (Type 3 in Section~2), so finite-state transducers handle
+it --- Koskenniemi's two-level model, which is fast and runs in both directions,
+analysis and generation. For English the morphology is light and the residual
+ambiguity (is \texttt{bark} a noun or a verb?) is left for the parser. For
+agglutinative (Japanese, Turkish) or fusional (Russian) languages this stage
+carries most of the grammatical information, and the feature structures it emits
+are correspondingly richer.
+
+\section{Feature structures in the grammar}
+
+Section~5 gives feature structures and unification abstractly; in the engine they
+attach to two things. Lexicon entries carry one feature structure each. Grammar
+rules carry \emph{equations} over the features of their constituents --- the
+constraints. A small English fragment:
+
+\begin{verbatim}
+  S  -> NP VP    : NP.agr = VP.agr      # subject-verb agreement
+  NP -> Det N    : NP.agr = N.agr
+  VP -> V        : VP.agr = V.agr
+  Det -> the
+  N   -> dog     : [num=sg, pers=3]
+  V   -> bark    : [agr != 3sg]
+  V   -> barks   : [agr  = 3sg]
+\end{verbatim}
+
+A context-free backbone annotated with feature equations is a \emph{unification
+grammar}; PATR-II is the minimal such formalism. As the parser applies a rule it
+unifies the daughters' structures according to the rule's equations and derives
+the mother's. A satisfied equation propagates information upward; a violated one
+yields $\top$ and pins the failure to a specific rule and a specific pair of
+constituents. The verdict and its explanation are then the same computation seen
+two ways.
+
+\section{Mal-rules and targeted error recognition}
+
+The coverage trap (Section~6) forbids reading ``no parse'' as ``ungrammatical.''
+Two strategies turn an absent parse into a specific, reportable diagnosis.
+
+\textbf{Constraint relaxation.} When unification fails, retry the parse with one
+constraint dropped. If relaxing exactly the agreement equation
+\texttt{NP.agr = VP.agr} lets the parse complete, that equation is the
+diagnosis and the span is the constituents it related. General, but it
+over-triggers when several relaxations succeed at once.
+
+\textbf{Mal-rules.} Encode a known wrong pattern as a rule carrying an error
+label, an explanation, and a correction. From the language-learning literature,
+mal-rules target specific recurrent errors:
+
+\begin{verbatim}
+  S -> NP VP  : NP.agr = 3sg, VP.agr != 3sg
+              *ERR  subject-verb agreement (missing 3sg -s)
+               FIX  inflect verb to 3sg, or pluralize subject
+\end{verbatim}
+
+Precise but anticipatory --- each error must be foreseen and written. A working
+engine parses normally first and only on failure falls back to relaxation and
+mal-rules, ranked by likelihood, reporting the \emph{minimal} set of violated
+constraints rather than every possible complaint.
+
+\section{A worked example: ``the dog bark''}
+
+Trace the pipeline on the ungrammatical \texttt{the dog bark}.
+
+\emph{Tokenize.} \texttt{[the, dog, bark]}.
+
+\emph{Morphology and lexicon.} \texttt{the} is a determiner, unmarked for
+number. \texttt{dog} is a noun, \texttt{[num=sg, pers=3]}. \texttt{bark} is
+ambiguous: a present-tense verb requiring \texttt{agr != 3sg}, or a singular
+noun.
+
+\emph{Parse.} Reading \texttt{bark} as a verb:
+
+\begin{verbatim}
+        S
+       / \
+     NP   VP
+    /  \   |
+  Det   N  V
+  the  dog bark
+\end{verbatim}
+
+The subject NP inherits the noun's features, \texttt{NP.agr = [num=sg, pers=3]}
+(that is, 3sg). The VP inherits the verb's requirement, \texttt{VP.agr =
+[agr != 3sg]}. The rule \texttt{S -> NP VP} demands \texttt{NP.agr = VP.agr}.
+For a third-person subject the base form's requirement reduces to
+$\textsf{num}\!:\textsf{pl}$, so the parser unifies the subject's number with
+the verb's:
+\[
+  [\,\textsf{num}\!:\textsf{sg}\,] \ \sqcup\ [\,\textsf{num}\!:\textsf{pl}\,]
+  \ =\ \top .
+\]
+The values conflict, unification fails, and no $S$ is built. Reading
+\texttt{bark} as a noun gives \texttt{Det N N}, which no rule licenses as a
+sentence, so that branch dies too. The sentence has no parse --- but it failed
+on exactly one relaxable constraint, which the matching mal-rule names.
+
+\emph{Report.}
+
+\begin{verbatim}
+  the dog bark
+          ^^^^   subject-verb agreement error
+
+  Verdict:   ungrammatical
+
+  Violation: subject-verb agreement (number)
+             subject "the dog" is 3rd person singular;
+             "bark" is the non-3sg present form, which needs a
+             non-3sg subject. Unifying num=sg with the required
+             num=pl fails.
+
+  Rule:      S -> NP VP   with   NP.agr = VP.agr
+
+  Fix:       "the dog barks"   (inflect the verb for 3sg), or
+             "the dogs bark"   (make the subject plural)
+\end{verbatim}
+
+This is the target behaviour: a verdict, the offending span, the violated rule,
+and a concrete repair --- all falling out of a single failed unification rather
+than a hand-written special case.
+
+\section{The grammar file format}
+
+The engine reads a grammar from a plain-text \texttt{.gram} file. The format is a
+concrete syntax for the unification grammar of Section~11 --- PATR-II in spirit
+(Shieber, 1986) --- with the diagnostic and mal-rule lines of Section~12 added.
+There are three statement kinds: lexicon entries, phrase-structure rules, and
+mal-rules. Whitespace separates tokens but is otherwise insignificant;
+\texttt{\#} begins a comment running to end of line; blank lines are ignored.
+The grammar of the format (\texttt{::=} defines, \texttt{|} alternates,
+\texttt{\{\,\}} repeats zero or more, \texttt{[\,]} is optional, \texttt{EOL} is
+end of line):
+
+\begin{verbatim}
+  grammar    ::= { lexentry | rule | malrule }
+
+  lexentry   ::= word ":" cat { featpath "=" value } EOL
+
+  rule       ::= production { equation }
+  production ::= sym "->" sym { sym } EOL
+  equation   ::= rulepath "=" ( rulepath | value ) [ diag ] EOL
+  diag       ::= "!" string [ "fix:" strategy { "|" strategy } ]
+
+  malrule    ::= "%mal" production "*ERR" string [ "*FIX" text ]
+
+  featpath   ::= "<" feature { feature } ">"        # implicit constituent: the
+                                                    # entry's own structure
+  rulepath   ::= "<" sym { feature } ">"            # first sym = a constituent
+                                                    # of the production; the rest
+                                                    # navigate into its structure
+
+  word       ::= token            # surface form, e.g. dog, barks
+  cat, sym   ::= identifier       # category / nonterminal: N NP V Det Pron S
+  feature    ::= identifier       # num pers case vagr
+  value      ::= identifier       # sg pl 3 nom acc 3sg n3sg
+  strategy   ::= identifier       # agree-verb nominative-pronoun ...
+  string     ::= '"' { char } '"'
+\end{verbatim}
+
+The semantics the syntax does not show:
+\begin{itemize}
+  \item \texttt{=} is unification, not assignment (Section~5): symmetric,
+        order-independent, a declared constraint rather than a store. All of a
+        rule's equations are unified together when the rule applies; any
+        conflict fails the application and, with it, the parse along that branch.
+  \item A \texttt{rulepath} names a constituent by its category symbol, then a
+        feature sequence into that constituent's structure. In a
+        \texttt{lexentry} the constituent is implicit --- the entry's own
+        structure --- so the path is features only.
+  \item An omitted feature is unconstrained and unifies with anything; grammatical
+        facts such as ``the past tense marks no agreement'' are stated by saying
+        nothing (Section~11).
+  \item A \texttt{!}-tagged equation carries the diagnostic reported when
+        relaxing exactly that constraint rescues the parse; \texttt{fix:} names
+        repair strategies. A \texttt{\%mal} rule instead recognizes a wrong
+        pattern directly and always reports.
+\end{itemize}
+
+One caveat in the present design: a path identifies a constituent by category
+symbol, which is unambiguous only when that symbol occurs once in the production.
+A rule with a repeated category (\texttt{S -> NP NP}) would need indexed names
+(\texttt{NP.1}, \texttt{NP.2}); the current fragment avoids the situation.
+
+\begin{thebibliography}{9}
+\bibitem{chomsky1956} N.\ Chomsky. \emph{Three models for the description of
+language}. IRE Transactions on Information Theory, 1956.
+\bibitem{shieber1985} S.\ M.\ Shieber. \emph{Evidence against the
+context-freeness of natural language}. Linguistics and Philosophy, 1985.
+\bibitem{joshi1985} A.\ K.\ Joshi. \emph{Tree adjoining grammars: How much
+context-sensitivity is required to provide reasonable structural descriptions?}
+In Natural Language Parsing, 1985.
+\bibitem{vsw1994} K.\ Vijay-Shanker and D.\ J.\ Weir. \emph{The equivalence of
+four extensions of context-free grammars}. Mathematical Systems Theory, 1994.
+\bibitem{pullum2001} G.\ K.\ Pullum and B.\ C.\ Scholz. \emph{On the distinction
+between model-theoretic and generative-enumerative syntactic frameworks}. In
+LACL, 2001.
+\bibitem{kasper1986} R.\ Kasper and W.\ Rounds. \emph{A logical semantics for
+feature structures}. In ACL, 1986.
+\bibitem{jurafsky} D.\ Jurafsky and J.\ H.\ Martin. \emph{Speech and Language
+Processing}, 3rd ed.\ (draft).
+\bibitem{sipser} M.\ Sipser. \emph{Introduction to the Theory of Computation}.
+\bibitem{shieber1986} S.\ M.\ Shieber. \emph{An Introduction to
+Unification-Based Approaches to Grammar}. CSLI, 1986.
+\bibitem{pereira} F.\ C.\ N.\ Pereira and S.\ M.\ Shieber. \emph{Prolog and
+Natural Language Analysis}. CSLI, 1987.
+\end{thebibliography}
+
+\end{document}
