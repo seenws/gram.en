@@ -10,22 +10,22 @@ let idx = 0;
 const wrapper = document.querySelector(".textarea-wrapper");
 const textfield = document.querySelector(".textfield");
 const placeholder = document.querySelector(".fake-placeholder");
+const counter_el = document.querySelector(".char-counter");
 const highlights = document.querySelector(".highlights");
 const popover = document.querySelector(".popover");
-const statusEl = document.querySelector(".status");
+const status_el = document.querySelector(".status");
 
-const cycleInterval = 4000; // in ms
-const capacity = 50; // characters
-const analyzeDelay = 400; // debounce, in ms
+const cycle_interval = 4000;
+const capacity = 50;
+const counter_threshold = capacity - 10; // only show the counter for the last 10 chars
+const analyze_delay = 400; // ms
 
 let typing = false;
 let timeout = null;
-let analyzeTimer = null;
-let currentViolations = [];
+let analyze_timer = null;
+let current_violations = [];
 
 placeholder.textContent = greetings[idx];
-
-// --- cycling placeholder (unchanged behaviour) ----------------------------
 
 function cycle_placeholder() {
     if (typing) return;
@@ -33,7 +33,7 @@ function cycle_placeholder() {
     placeholder.classList.add("exit");
 
     timeout = setTimeout(() => {
-        if (typing) return; // guards against cycle race condition
+        if (typing) return;
 
         idx = (idx + 1) % greetings.length;
         placeholder.textContent = greetings[idx];
@@ -47,138 +47,143 @@ function cycle_placeholder() {
     }, 350);
 }
 
-setInterval(cycle_placeholder, cycleInterval);
+setInterval(cycle_placeholder, cycle_interval);
 
-// --- helpers --------------------------------------------------------------
-
-function escapeHtml(s) {
+function escape_html(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function setStatus(text, cls) {
-    statusEl.textContent = text;
-    statusEl.className = "status" + (cls ? " " + cls : "");
+function set_status(text, cls) {
+    status_el.textContent = text;
+    status_el.className = "status" + (cls ? " " + cls : "");
 }
 
-function updateCounter(length) {
+function update_counter(length) {
+    // counter: hidden until the input nears the cap, then fades in
+    const near = length >= counter_threshold;
+    counter_el.textContent = near ? `${length}/${capacity}` : "";
+    counter_el.classList.toggle("visible", near);
+
+    // placeholder: greeting only when empty; hidden while typing
     if (length > 0) {
         if (timeout) {
             clearTimeout(timeout);
             timeout = null;
         }
+
         placeholder.classList.remove("exit", "enter");
-        placeholder.classList.add("counter");
-        placeholder.textContent = `(${length}/${capacity})`;
+        placeholder.classList.add("hidden");
     } else {
-        placeholder.classList.remove("counter");
+        placeholder.classList.remove("hidden");
         placeholder.textContent = greetings[idx];
     }
 }
 
-// Rebuild the overlay so each error's character span is wrapped in a clickable
-// underline; the rest of the text stays (transparent) for exact alignment.
-function renderHighlights(text, violations) {
+function render_highlights(text, violations) {
     const ordered = violations
         .map((v, i) => ({ v, i }))
-        .filter((x) => Array.isArray(x.v.charSpan))
-        .sort((a, b) => a.v.charSpan[0] - b.v.charSpan[0]);
+        .filter((x) => Array.isArray(x.v.char_span))
+        .sort((a, b) => a.v.char_span[0] - b.v.char_span[0]);
 
     let html = "";
     let cursor = 0;
+
     for (const { v, i } of ordered) {
-        const [s, e] = v.charSpan;
-        if (s < cursor || e <= s) continue; // skip overlaps / empties
-        html += escapeHtml(text.slice(cursor, s));
-        html += `<span class="err" data-i="${i}">${escapeHtml(text.slice(s, e))}</span>`;
+        const [s, e] = v.char_span;
+
+        if (s < cursor || e <= s) continue;
+
+        html += escape_html(text.slice(cursor, s));
+        html += `<span class="err" data-i="${i}">${escape_html(text.slice(s, e))}</span>`;
         cursor = e;
     }
-    html += escapeHtml(text.slice(cursor));
+
+    html += escape_html(text.slice(cursor));
     highlights.innerHTML = html;
 }
 
-function runAnalysis() {
+function run_analysis() {
     const text = textfield.value;
-    closePopover();
+    close_popover();
 
     if (!text.trim()) {
         highlights.innerHTML = "";
-        currentViolations = [];
-        setStatus("", "");
+        current_violations = [];
+        set_status("", "");
         return;
     }
+
     if (!window.GrammarEngine || typeof window.GrammarEngine.check !== "function") {
-        setStatus("engine not loaded — run: npm run build", "bad");
+        set_status("engine not loaded — run: npm run build", "bad");
         return;
     }
 
     const result = window.GrammarEngine.check(text);
-    currentViolations = result.violations || [];
-    renderHighlights(text, currentViolations);
+    current_violations = result.violations || [];
+    render_highlights(text, current_violations);
 
     switch (result.verdict) {
         case "grammatical":
-            setStatus("✓ looks grammatical", "ok");
+            set_status("✓ looks grammatical", "ok");
             break;
         case "ungrammatical": {
-            const n = currentViolations.length;
-            setStatus(`✗ ${n} issue${n === 1 ? "" : "s"} — click the underline`, "bad");
+            const n = current_violations.length;
+            set_status(`✗ ${n} issue${n === 1 ? "" : "s"} — click the underline`, "bad");
             break;
         }
         case "unknown-word":
-            setStatus(`not analysed — unknown word: ${(result.unknownWords || []).join(", ")}`, "bad");
+            set_status(`not analysed — unknown word: ${(result.unknown_words || []).join(", ")}`, "bad");
             break;
         default:
-            setStatus("couldn't analyse this one (out of coverage)", "");
+            set_status("couldn't analyse this one (out of coverage)", "");
     }
 }
 
-// --- popover --------------------------------------------------------------
+function open_popover(span) {
+    const v = current_violations[Number(span.dataset.i)];
 
-function openPopover(span) {
-    const v = currentViolations[Number(span.dataset.i)];
     if (!v) return;
 
-    const fixButtons = (v.fixes || [])
-        .map((f) => `<button type="button">${escapeHtml(f)}</button>`)
+    const fix_buttons = (v.fixes || [])
+        .map((f) => `<button type="button">${escape_html(f)}</button>`)
         .join("");
     popover.innerHTML =
-        `<div class="msg">${escapeHtml(v.message)}</div>` +
-        `<div class="rule">${escapeHtml(v.rule)}</div>` +
-        (fixButtons ? `<div class="fixes">${fixButtons}</div>` : "");
+        `<div class="msg">${escape_html(v.message)}</div>` +
+        `<div class="rule">${escape_html(v.rule)}</div>` +
+        (fix_buttons ? `<div class="fixes">${fix_buttons}</div>` : "");
 
     popover.hidden = false;
-    const wrapRect = wrapper.getBoundingClientRect();
-    const spanRect = span.getBoundingClientRect();
-    popover.style.left = `${Math.max(0, spanRect.left - wrapRect.left)}px`;
-    popover.style.top = `${spanRect.bottom - wrapRect.top + 6}px`;
+    const wrap_rect = wrapper.getBoundingClientRect();
+    const span_rect = span.getBoundingClientRect();
+    popover.style.left = `${Math.max(0, span_rect.left - wrap_rect.left)}px`;
+    popover.style.top = `${span_rect.bottom - wrap_rect.top + 6}px`;
 
     const buttons = popover.querySelectorAll(".fixes button");
-    buttons.forEach((btn, i) => btn.addEventListener("click", () => applyFix(v.fixes[i])));
+    buttons.forEach((btn, i) => btn.addEventListener("click", () => apply_fix(v.fixes[i])));
 }
 
-function closePopover() {
+function close_popover() {
     popover.hidden = true;
     popover.innerHTML = "";
 }
 
-function applyFix(fix) {
+function apply_fix(fix) {
     textfield.value = fix;
     typing = fix.length > 0;
-    updateCounter(fix.length);
-    closePopover();
-    runAnalysis();
+    update_counter(fix.length);
+    close_popover();
+    run_analysis();
     textfield.focus();
 }
-
-// --- events ---------------------------------------------------------------
 
 textfield.addEventListener("input", (event) => {
     const length = event.target.value.length;
     typing = length > 0;
-    updateCounter(length);
+    update_counter(length);
 
-    if (analyzeTimer) clearTimeout(analyzeTimer);
-    analyzeTimer = setTimeout(runAnalysis, analyzeDelay);
+    if (analyze_timer) clearTimeout(analyze_timer);
+
+    analyze_timer = setTimeout(run_analysis, analyze_delay);
 });
 
 textfield.addEventListener("scroll", () => {
@@ -188,18 +193,19 @@ textfield.addEventListener("scroll", () => {
 
 highlights.addEventListener("click", (event) => {
     const span = event.target.closest(".err");
+
     if (span) {
         event.stopPropagation();
-        openPopover(span);
+        open_popover(span);
     }
 });
 
 document.addEventListener("click", (event) => {
     if (!popover.hidden && !popover.contains(event.target) && !event.target.closest(".err")) {
-        closePopover();
+        close_popover();
     }
 });
 
 document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closePopover();
+    if (event.key === "Escape") close_popover();
 });

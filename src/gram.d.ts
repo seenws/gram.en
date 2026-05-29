@@ -1,5 +1,4 @@
-// esbuild imports *.gram as text (see the build script); this declaration keeps
-// the editor's type-checker happy about that import.
+// esbuild imports *.gram as text; this lets the type-checker accept that import
 declare module "*.gram" {
     const content: string;
     export default content;

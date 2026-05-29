@@ -10,16 +10,15 @@
     <main class="screen">
         <div class="container">
             <header class="masthead">
-                <h1 class="title">grammar</h1>
+                <h1 class="title">gram.en</h1>
                 <p class="subtitle">type a sentence &mdash; grammatical issues get underlined</p>
             </header>
 
             <div class="textarea-wrapper">
                 <textarea class="textfield" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="50"></textarea>
-                <!-- underline overlay: transparent text, only error spans show -->
                 <div class="highlights" aria-hidden="true"></div>
                 <div class="fake-placeholder"></div>
-                <!-- popover anchored under a clicked error span -->
+                <div class="char-counter" aria-hidden="true"></div>
                 <div class="popover" hidden></div>
             </div>
 

@@ -17,7 +17,7 @@ body {
 }
 
 .container {
-    width: min(560px, 90%);
+    width: min(640px, 92%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -47,7 +47,7 @@ body {
 
 .textarea-wrapper {
     position: relative;
-    width: 80%;
+    width: 100%;
 }
 
 .textfield {
@@ -59,10 +59,13 @@ body {
     margin-bottom: 20px;
     padding-left: 25px;
     resize: none;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
     background-color: #0e0e12;
     border: 1px solid #2b2b33;
     border-radius: 10px;
-    font-size: 24px;
+    font-size: 20px;
     color: #d8d8de;
     caret-color: #6ea8fe;
     cursor: text;
@@ -80,7 +83,7 @@ body {
     position: absolute;
     top: 26px;
     left: 24px;
-    font-size: 24px;
+    font-size: 20px;
     color: #57575f;
     opacity: 0.85;
     pointer-events: none;
@@ -100,9 +103,28 @@ body {
     opacity: 0;
 }
 
-.fake-placeholder.counter {
-    transform: translate(calc(100% - 25px), 0);
-    right: 50px;
+.fake-placeholder.hidden {
+    opacity: 0;
+}
+
+/* Character counter: stays hidden until the input nears its cap, then fades in
+   small and dim in the field's bottom-right corner. */
+.char-counter {
+    position: absolute;
+    right: 14px;
+    top: 48px;
+    z-index: 4;
+    font-family: monospace;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    color: #57575f;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+
+.char-counter.visible {
+    opacity: 1;
 }
 
 .textfield::placeholder {
@@ -165,12 +187,10 @@ body {
     border: 1px solid transparent;
     border-radius: 10px;
     font-family: monospace;
-    font-size: 24px;
+    font-size: 20px;
     line-height: 1;
     color: transparent;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    word-break: break-word;
+    white-space: pre;
     overflow: hidden;
     pointer-events: none;
     user-select: none;

@@ -1,12 +1,3 @@
-# =============================================================================
-# en.gram  --  English grammar fragment (PATR-style unification grammar)
-# =============================================================================
-#
-# A context-free backbone annotated with feature equations. Grammaticality =
-# an S parse exists whose feature equations all unify. Errors are surfaced by
-# the equation that fails to unify (tagged with `!`), or by a mal-rule (`%mal`)
-# matching a known wrong pattern.
-#
 # Syntax
 # ------
 #   lexicon entry : form : CAT  <path>=value ...
@@ -33,10 +24,13 @@
 # noun/pronoun carries a precomputed atomic `vagr` and verbs require a subject
 # `vagr`. Agreement is then plain equality. Revisit when a disjunctive value
 # type exists.
-# =============================================================================
 
 
-# ----- Lexicon ---------------------------------------------------------------
+# Lexicon
+#
+# Closed-class items (determiners, pronouns, prepositions) stay explicit:
+# they're irregular as a class and morphology has nothing to add.
+# Open-class items (nouns, verbs) are derived from paradigms below.
 
 # Determiners            ( `the` is unmarked for number; a/an mark the sound of
 #                          the following noun: consonant vs vowel )
@@ -46,14 +40,6 @@ an    : Det  <num>=sg  <initial>=vowel
 this  : Det  <num>=sg
 these : Det  <num>=pl
 
-# Nouns         num       pers      vagr         initial       lemma
-dog    : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=dog
-dogs   : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=dog
-cat    : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=cat
-cats   : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=cat
-bark   : N  <num>=sg  <pers>=3  <vagr>=3sg   <initial>=cons  <lemma>=bark  # also a verb (ambiguous, notes 13)
-barks  : N  <num>=pl  <pers>=3  <vagr>=n3sg  <initial>=cons  <lemma>=bark
-
 # Pronouns       num       pers      case        vagr         lemma
 I      : Pron  <num>=sg  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1sg
 me     : Pron  <num>=sg  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1sg
@@ -62,16 +48,47 @@ him    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.m
 they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
 them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
 
-# Verbs            required subject vagr      lemma
-bark   : V  <vagr>=n3sg  <lemma>=bark   # base form (present): I/you/we/they bark
-barks  : V  <vagr>=3sg   <lemma>=bark   # 3sg form  (present): he/she/it barks
-like   : V  <vagr>=n3sg  <lemma>=like
-likes  : V  <vagr>=3sg   <lemma>=like
-chased : V  <lemma>=chase              # past tense: no subject agreement -> vagr unset
+# Prepositions
+to   : P
+with : P
+on   : P
+
+# Past-tense verbs remain explicit until a past-tense paradigm with
+# stem-final-e handling lands; English regular past is "+ed" after a
+# consonant ("barked") but "+d" after a silent e ("chased", "liked").
+chased : V  <lemma>=chase
+
+# Open-class morphology: N-reg covers regular consonant-initial nouns
+# (dog/dogs, cat/cats, bark/barks-as-noun) and V-reg covers regular
+# present-tense verbs in their bare and 3sg forms (bark/barks, like/likes).
+# `bark` appears under both roots, so morph_analyze returns both N and V
+# analyses for the surface "bark" (the ambiguity from §13 of the notes).
+%lex Root
+    dog   : N-reg            <lemma>=dog   <initial>=cons
+    cat   : N-reg            <lemma>=cat   <initial>=cons
+    bark  : N-reg            <lemma>=bark  <initial>=cons
+    bark  : V-reg            <lemma>=bark
+    like  : V-reg            <lemma>=like
+    child : N-irreg-children <lemma>=child <initial>=cons
+
+%lex N-reg : N
+    +N+Sg :    <num>=sg <pers>=3 <vagr>=3sg
+    +N+Pl : s  <num>=pl <pers>=3 <vagr>=n3sg
+
+%lex V-reg : V
+    +V+Pres+Bare :    <vagr>=n3sg
+    +V+Pres+3Sg  : s  <vagr>=3sg
+
+# The second +N+Pl entry recognises the anticipated wrong plural "*childs"
+# (the FST emits "child+N+Pl" for both surfaces; morph_analyze narrows by
+# the actual surface and copies *ERR/*FIX onto the wrong-surface analysis).
+%lex N-irreg-children : N
+    +N+Sg :     <num>=sg <pers>=3 <vagr>=3sg
+    +N+Pl : ren <num>=pl <pers>=3 <vagr>=n3sg
+    +N+Pl : s   <num>=pl <pers>=3 <vagr>=n3sg  *ERR "irregular plural: 'children', not '*childs'"  *FIX children
 
 
-# ----- Grammar rules ---------------------------------------------------------
-
+# Grammar rules
 S -> NP VP
     <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
     <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
@@ -84,7 +101,7 @@ NP -> Det N
     <NP vagr> = <N vagr>
 
 NP -> N
-    <N num>   = pl          # bare plural only; blocks bare singular count nouns (*"dog barks")
+    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
     <NP num>  = <N num>
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
@@ -105,10 +122,15 @@ VP -> V NP
 # position freely; only pronouns can clash on case.
 
 
-# ----- Mal-rules (word order) ------------------------------------------------
-# Word-order errors yield *no parse* from the backbone, and "no parse" is not a
-# diagnosis (the coverage trap). Anticipated misorderings are caught explicitly.
-# This family is open-ended: prefer a few targeted mal-rules over exhaustiveness.
+PP -> P NP
+    <NP case> = acc         ! "the object of a preposition must be accusative"  fix: accusative-pronoun
+
+# The mother shares its symbol with the head daughter, so apply_equations' env
+# (keyed by category symbol) makes the mother inherit the head daughter's feature
+# structure automatically -- correct head percolation with no equations needed.
+NP -> NP PP
+VP -> VP PP
+
 
 %mal S -> V NP
     *ERR "word order: English clauses are subject-verb-object; the verb appears before its subject"

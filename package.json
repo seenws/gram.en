@@ -4,6 +4,9 @@
   "description": "Rule-based grammatical analysis engine",
   "main": "index.js",
   "type": "module",
+  "engines": {
+    "node": ">=22.6.0"
+  },
   "scripts": {
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "analyze": "node --experimental-strip-types src/cli.ts",

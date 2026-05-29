@@ -478,12 +478,382 @@ surface form to one or more (lemma, features) pairs:
 \end{verbatim}
 
 Morphology is regular (Type 3 in Section~2), so finite-state transducers handle
-it --- Koskenniemi's two-level model, which is fast and runs in both directions,
-analysis and generation. For English the morphology is light and the residual
-ambiguity (is \texttt{bark} a noun or a verb?) is left for the parser. For
-agglutinative (Japanese, Turkish) or fusional (Russian) languages this stage
-carries most of the grammatical information, and the feature structures it emits
-are correspondingly richer.
+it --- Koskenniemi's two-level model (Koskenniemi, 1983), which is fast and runs
+in both directions, analysis and generation. For English the morphology is light
+and the residual ambiguity (is \texttt{bark} a noun or a verb?) is left for the
+parser. For agglutinative (Japanese, Turkish) or fusional (Russian) languages
+this stage carries most of the grammatical information, and the feature
+structures it emits are correspondingly richer.
+
+\subsection{Transducers}
+
+\begin{definition}[Finite-state transducer]
+A finite-state transducer is a 5-tuple $T = (Q, \Sigma, q_0, F, \delta)$, with
+$Q$ a finite state set, $\Sigma$ a finite alphabet shared by both tapes,
+$q_0 \in Q$ the initial state, $F \subseteq Q$ the accepting states, and a
+transition relation
+\[
+  \delta \subseteq Q \times (\Sigma \cup \{\varepsilon\}) \times
+                    (\Sigma \cup \{\varepsilon\}) \times Q.
+\]
+An arc $(p,\, x{:}y,\, q) \in \delta$ reads $x$ on the input tape, emits
+$y$ on the output tape, and moves from $p$ to $q$; either symbol may be the
+empty string $\varepsilon$.
+\end{definition}
+
+The relation $R(T) \subseteq \Star{\Sigma} \times \Star{\Sigma}$ is the set of
+pairs $(u, v)$ such that a sequence of arcs spells $u$ on the input tape, $v$
+on the output, and lands in $F$. Equivalently, $R(T)$ is the pair of input/output
+projections of a regular language over $\Sigma \times \Sigma$ --- a
+\emph{regular relation}. Type 3 on each projection, by definition.
+
+Five operations carry the construction. \emph{Union}, \emph{concatenation}, and
+\emph{Kleene closure} build $R \cup S$, $R \cdot S$, and $\Star{R}$ by the
+standard NFA constructions, with $\varepsilon$-arcs at the seams.
+\emph{Inversion} swaps the tapes: $T^{-1}$ has the same state graph with
+$x{:}y$ replaced by $y{:}x$ on every arc. \emph{Composition} chains two
+transducers: if $T_1$ relates tapes $X$ and $Y$ and $T_2$ relates $Y$ and
+$Z$, then $T_1 \circ T_2$ relates $X$ and $Z$, with state space
+$Q_1 \times Q_2$ and an arc $(p_1, p_2) \xrightarrow{x:z} (q_1, q_2)$
+whenever $T_1$ has $p_1 \xrightarrow{x:y} q_1$ and $T_2$ has
+$p_2 \xrightarrow{y:z} q_2$ for some $y$.
+
+\begin{theorem}[Closure]
+The regular relations are closed under union, concatenation, Kleene closure,
+composition, and inversion.
+\end{theorem}
+
+Composition is the operation that lets a morphology be built out of pieces.
+\emph{Application} in either direction is the same DFS through one relation,
+with inversion choosing which tape is consumed: for input $u$,
+$\textsf{apply}_\downarrow(T, u) = \{ v \mid (u,v) \in R(T) \}$ analyses,
+$\textsf{apply}_\uparrow(T, v) = \{ u \mid (u,v) \in R(T) \}$ generates, and
+$\textsf{apply}_\uparrow(T, v) = \textsf{apply}_\downarrow(T^{-1}, v)$.
+
+\subsection{Continuation lexicons}
+
+The lexicon part of the morphology --- which stems take which suffixes, in
+what order, with what features --- is itself a regular relation. The standard
+way to write it (Karttunen's LEXC) names blocks of stems and suffixes that
+reference each other by name. A \texttt{Root} block lists stems with their
+continuation classes; each continuation lists possible suffixes, each emitting
+a tag sequence on the lexical tape and consuming a (possibly empty) suffix
+string on the surface tape. So
+
+\begin{verbatim}
+  %lex Root
+      dog : N-reg  <lemma>=dog
+  %lex N-reg : N
+      +N+Sg :       <num>=sg <pers>=3
+      +N+Pl : s     <num>=pl <pers>=3
+\end{verbatim}
+
+declares that from stem \texttt{dog} the paradigm \texttt{N-reg} produces two
+forms: lexical \texttt{dog+N+Sg} corresponds to surface \texttt{dog}, and
+lexical \texttt{dog+N+Pl} corresponds to surface \texttt{dogs}. Each block
+compiles to a sub-FST; cross-references between blocks are $\varepsilon$-arcs;
+the lexicon transducer is the union of all root-to-suffix paths.
+
+Features attach to tags rather than to surfaces. A successful application
+returns a tag sequence, the decoder reads off which paradigm entries the
+sequence matched, and the root entry's features unify with the suffix entry's
+to yield the lexical analysis the parser consumes. Unification, not
+assignment: a singular-noun stem's $\textsf{num}\!:\!\textsf{sg}$ flows into
+the lemma's record by the join of Section~5.
+
+A real lexicon has stems that follow their paradigm almost perfectly but
+not quite: \emph{fish} pluralises to itself, \emph{go} takes \emph{went}
+in the past. Inventing a single-stem paradigm for each is correct but
+inflates the paradigm namespace until it is no longer a paradigm namespace.
+The LEXC syntax extends one level: a root entry may be followed by
+\emph{override entries}, indented one level deeper, each naming a
+paradigm tag whose surface and features it replaces on this root only.
+Override matching is by tag; an override naming a tag the paradigm does
+not carry is an error.
+
+\begin{verbatim}
+  %lex Root
+      fish : N-reg   <lemma>=fish
+          +N+Pl : 0  <num>=pl
+
+  %lex N-reg : N
+      +N+Sg :   <num>=sg <pers>=3
+      +N+Pl : s <num>=pl <pers>=3
+\end{verbatim}
+
+Formally, write the effective entry list for a root $r$ in a paradigm $p$ as
+\[
+  \mathcal{E}(r, p) \;=\; \bigl[\, \omega_r(e) \mid e \in p.\textit{entries} \,\bigr],
+\]
+where $\omega_r(e) = e$ if $r$ does not override $e.\textsf{tag}$, and
+otherwise $\omega_r(e)$ replaces the surface with the override's surface
+and merges the features by override-wins assignment at every path the
+override touches. Compilation and decoding both consume $\mathcal{E}(r, p)$
+rather than $p.\textit{entries}$ directly.
+
+The naive translation --- one sub-path per $(r, e) \in p.\textit{entries}$
+pair, the lot unioned --- yields $\Theta(\text{stems} \cdot \text{forms} \cdot
+\text{stem-length})$ states. Fine for a 6-noun fragment, painful at
+realistic scale: ten thousand stems times ten forms each times a six-character
+mean stem length pushes well past a million states before composition. The
+construction in this engine groups roots by paradigm and, inside each group,
+builds a character trie over the stems: trie nodes are FST states, edges
+are identity arcs $c{:}c$. At each trie leaf an $\varepsilon$-arc enters a
+paradigm-level continuation sub-FST that emits the tags and consumes the
+suffixes for $p.\textit{entries}$ once, shared by every root that follows
+$p$ without overrides; the few roots with overrides each get a private
+continuation built from their $\mathcal{E}(r, p)$. The resulting state count
+is
+\[
+  O(\text{distinct stem prefixes}) \;+\; O(\text{paradigms} \cdot \text{forms})
+   \;+\; O(\text{overridden roots} \cdot \text{forms}),
+\]
+an order of magnitude smaller in practice, and the relation is unchanged ---
+apply over the trie plus shared continuation is identical to apply over the
+union of per-pair sub-paths.
+
+\subsection{Replace rules}
+
+A purely concatenative lexicon spells out every irregular surface explicitly,
+which is feasible for English and prohibitive for agglutinative or fusional
+languages. The standard alternative is a cascade of \emph{replace rules} that
+mediate between an idealised lexical-side surface and the actual surface. Each
+rule has the form
+\[
+  A \to B \;\|\; L \;\_\; R,
+\]
+read: $A$ on input rewrites to $B$ on output, in the context where the left
+fragment $L$ appears immediately before the position and $R$ appears
+immediately after. Every such rule denotes a regular relation; the cascade
+composes them into a single relation, which then composes with the lexicon
+transducer.
+
+Two semantics for the same syntax are classical (Karttunen, 1995):
+
+\begin{itemize}
+  \item \emph{Obligatory.} In context $L \_ R$, $A$ \emph{must} rewrite to
+        $B$ --- the compiled FST has no path through the position that leaves
+        $A$ alone. Built by Karttunen's marker construction: insert brackets
+        around every potential rewrite site, filter by context, replace
+        within brackets, remove brackets. Five composed transducers, each
+        delicate.
+  \item \emph{Optional.} In context $L \_ R$, $A$ \emph{may} rewrite to $B$,
+        and identity is also permitted. The compiled FST has both paths.
+        Built in one expression,
+        \[
+          \Star{\Big(\; \mathit{Id}_1 \;\cup\;
+                          L \cdot \langle A : B \rangle \cdot R \;\Big)},
+        \]
+        where $\mathit{Id}_1$ is identity on a single $\Sigma$-symbol and
+        $\langle A : B \rangle$ is the one-arc relation $\{(A, B)\}$.
+\end{itemize}
+
+Optional rules over-generate: a surface reachable only through
+``rewrite did not fire'' is also accepted. This sounds wrong but is harmless
+once the lexicon transducer is composed downstream --- the lexicon emits
+only well-formed lexical strings, so the spurious paths through the rule
+cascade fail to land on any lexical analysis and drop out of the final
+relation. The engine takes the optional path: a few lines, no marker
+machinery, and the lexicon is doing the work of filtering anyway.
+
+\subsection{An operational pitfall}
+
+There is one thing about applying composed transducers that is worth
+recording explicitly, because it is the kind of cost that is invisible at
+the level of the algebra and unmissable at the level of the runtime.
+
+Composition produces an FST whose state count is at most
+$|Q_A| \cdot |Q_B|$ --- polynomial. The number of $\varepsilon$-arcs,
+however, is not pinned by the state count. An $\varepsilon$-arc on either
+side of the composition seam survives into the result, because the machine
+on the other side of the seam does not advance when its partner emits or
+reads $\varepsilon$. A few rule transducers built by the optional-replace
+construction are state-sparse but $\varepsilon$-dense (every Kleene loop
+contributes its own $\varepsilon$-back-edge, and every union arm an
+$\varepsilon$-front-edge), and their composition is more so.
+
+Application by depth-first search through such a graph is exponential. The
+DFS at each $(\textsf{state}, \textsf{position})$ tries every outgoing arc,
+including $\varepsilon$-arcs that re-enter states without consuming input.
+A path-local visited set --- $(\textsf{state}, \textsf{position})$ marked on
+entry, unmarked on backtrack --- ensures termination, but does not prune
+across paths: each distinct path that reaches a given
+$(\textsf{state}, \textsf{position})$ is searched afresh, and in a dense
+$\varepsilon$-graph the number of such paths is exponential in depth.
+
+We confirmed the cause by bisection. Constructing each rule transducer took
+microseconds (tens of states each). Composing two of them produced $\sim
+3800$ states in milliseconds --- fast, polynomial as predicted. Applying
+the composed machine to a single input character hung past thirty seconds.
+The state count was fine; the path count was not.
+
+\begin{remark}
+The principled fix is the marker construction for obligatory replace, which
+yields a nearly deterministic FST with bounded $\varepsilon$-fanout. That
+is a real piece of work and is postponed.
+\end{remark}
+
+The pragmatic fix gives up the single composed transducer. The rule cascade
+is kept as a list $\langle T_1, T_2, \dots, T_k \rangle$ and applied
+sequentially: for input $x$,
+\[
+  \textsf{apply}_\downarrow(T_k,\, \textsf{apply}_\downarrow(T_{k-1},\,
+    \dots\, \textsf{apply}_\downarrow(T_1, \{x\}))),
+\]
+with deduplication between layers. Composition is associative, so the set of
+outputs equals the set of outputs of the composed relation; nothing is lost
+mathematically. The fan-out per layer is bounded by the number of optional
+rewrite sites in the layer's input, which is at most that input's length;
+the total fan-out is the product across layers, finite and small for any
+realistic cascade. We pay one application per rule rather than one
+application on the composed machine, and that constant factor is what buys
+the polynomial runtime back.
+
+Composition stays in the kernel as a primitive --- the lexicon needs it to
+join continuation blocks, where the $\varepsilon$-density is mild --- but
+the rule cascade does not use it.
+
+The pragmatic fix solves the runtime problem without addressing the structural
+one. There is a second, more local, principled fix that targets the
+apply-time pathology at its root: \emph{input-$\varepsilon$ elimination}.
+The transformation is the transducer analogue of the standard
+$\varepsilon$-elimination for finite automata. For each state $s$, compute
+the input-$\varepsilon$ closure
+\[
+  E^{\downarrow}_\varepsilon(s) \;=\; \bigl\{\, (t,\, w) \;\big|\;
+    s \xrightarrow{\varepsilon{:}w_1} \cdots \xrightarrow{\varepsilon{:}w_n} t,\;\;
+    w = w_1 \cdots w_n \,\bigr\},
+\]
+the set of $(t, w)$ pairs reachable from $s$ by an input-$\varepsilon$ path
+with concatenated output $w$. For every non-$\varepsilon$-input arc
+$t \xrightarrow{x:y} u$ leaving any state $t$ in the closure, install a new
+arc $s \xrightarrow{x:wy} u$ in the rebuilt transducer. If
+$(t, w) \in E^{\downarrow}_\varepsilon(s)$ has $t \in F$, then $s$ becomes
+an accepting state whose acceptance emits $w$ on the output tape as exit
+output. Output-$\varepsilon$ arcs are left in place; they are harmless,
+since termination does not depend on them.
+
+The rebuilt transducer accepts exactly the same relation as the original.
+The proof is the usual closure argument: every accepting run in the
+original factors as a finite alternation of input-$\varepsilon$ segments
+and non-$\varepsilon$-input arcs, and each non-$\varepsilon$ arc is the
+witness for exactly one new arc in the rebuilt machine (with the preceding
+input-$\varepsilon$ segment folded into its output); conversely every run
+in the rebuilt machine corresponds to a unique factored run in the
+original. Acceptance via exit output covers the residual case in which the
+last segment is input-$\varepsilon$.
+
+The payoff is that walking $k$ arcs in the rebuilt FST consumes exactly $k$
+input symbols. The DFS depth is bounded by $|input|$ and the path-local
+visited set is no longer load-bearing --- its only remaining duty is to
+guard against output-$\varepsilon$ cycles, which the constructions in this
+engine do not contain. The cascade-blowup probe that hung past thirty
+seconds on length-one input completes in milliseconds after elimination,
+and composition becomes a usable operation again. Two implementation
+points are worth recording. First, arc outputs may be multi-symbol strings
+after elimination (since the closure concatenates several output symbols
+into the prepended prefix $w$), and apply re-tokenises the accumulated
+output at the end so callers always see a one-symbol-per-element
+sequence. Second, exit outputs are stored as a per-state list rather than
+a single string, since one state may $\varepsilon$-reach distinct finals
+along distinct outputs --- the override-only \emph{fish} case in
+Section~10.2 is the smallest example. Inversion, used by
+$\textsf{apply}_\uparrow$, materialises each exit-output string as a
+chain of input arcs ending at a fresh accepting state, so generation
+keeps working through the same kernel.
+
+\begin{remark}
+Marker construction and input-$\varepsilon$ elimination address different
+problems. Marker construction restores obligatory replace semantics and
+pins $\varepsilon$-fanout as a consequence; input-$\varepsilon$ elimination
+takes the existing $\varepsilon$-dense optional-replace transducers as
+given and makes their apply tractable. The engine uses elimination
+unconditionally; obligatory replace remains a future task, taken on the
+day a rule actually requires it.
+\end{remark}
+
+\subsection{Pipeline placement}
+
+The compiled morphology slots into the position Section~8 reserves for it.
+The interface is a function from a surface token to a (possibly empty) list
+of $(\textsf{lemma}, \textsf{cat}, \textsf{feats}, \textsf{err}?)$ analyses,
+looked up in this order:
+
+\begin{enumerate}
+  \item explicit lexicon entry (closed-class items, irregulars);
+  \item paradigm-derived analysis via the FST;
+  \item empty $\Rightarrow$ unknown word.
+\end{enumerate}
+
+The closed-class lexicon and the FST jointly partition the open vocabulary;
+the explicit lexicon doubles as the override mechanism for items that have
+no paradigm to follow (\texttt{the}, pronouns, prepositions) or that block a
+regular paradigm derivation (past-tense \texttt{chased} before a past-tense
+paradigm exists). Ambiguity propagates as a list --- a form that analyses as
+both noun and verb produces both entries --- and the parser resolves which
+fit into a tree (Section~13). The optional \textsf{err} field, populated only
+for error-tagged paradigm entries, is the subject of the next subsection.
+
+\subsection{Morphological mal-rules}
+
+Anticipated \emph{wrong} surfaces (\texttt{*childs}, \texttt{*goed},
+\texttt{*mans}) need a place to land. Treating them as unknown words is the
+wrong report: the user knows what they meant; they wrote the wrong plural.
+Phase 8 of the engine closes the loop by giving the morphology a
+counterpart of the syntactic mal-rules of Section~11. A paradigm entry may
+carry an \texttt{*ERR "..."} message and a \texttt{*FIX <form>} suggestion;
+the entry describes an anticipated wrong surface, and the lexicon FST
+contains it alongside the canonical entry under the same tag.
+
+\begin{verbatim}
+  %lex N-irreg-children : N
+      +N+Sg :     <num>=sg <pers>=3 <vagr>=3sg
+      +N+Pl : ren <num>=pl <pers>=3 <vagr>=n3sg
+      +N+Pl : s   <num>=pl <pers>=3 <vagr>=n3sg
+                  *ERR "irregular plural: 'children', not '*childs'"
+                  *FIX children
+\end{verbatim}
+
+Both \texttt{+N+Pl} entries share a tag. The FST emits \texttt{child+N+Pl}
+for either surface; \textsf{decode\_lexical} returns both candidate
+analyses (different surfaces, same tag sequence); and \textsf{morph\_analyze}
+narrows by the actual surface form, attaching the error to the wrong-surface
+analysis and leaving the right-surface analysis clean. The decode step
+violates an invariant that held silently through Phase~7 --- that the
+lexical tape uniquely identified the (root, entry) pair --- and the
+surface-form filter is the price of relaxing it.
+
+The error then flows through the engine as a leaf-level violation. The chart
+scanner builds a leaf edge whose \texttt{violations} list contains
+$\{\textsf{rule}{:}\text{``morph''},\; \textsf{message}{:}\dots,\;
+   \textsf{fix\_strategies}{:}[``\text{literal:children}''],\;
+   \textsf{span}{:}[i, i{+}1]\}$, and \textsf{advance} propagates it through
+the chart unchanged. The min-violations packing of Section~13 prefers any
+clean leaf at the same position, so a clean and an error-tagged analysis
+for the same surface would never both appear in the winning derivation.
+
+The verdict cascade collapses what would otherwise be a new branch.
+The model now distinguishes three states for a surface form:
+\emph{clean} (paradigm- or lexicon-derived without error),
+\emph{error-tagged} (a known malformation with a suggested fix), and
+\emph{unknown} (no analysis at all). The first two are admitted to the
+parser; the third skips it. A parse with leaf-level violations is reported
+as \texttt{ungrammatical} with those violations attached, indistinguishable
+in verdict shape from a syntactic mal-rule. The downstream report can
+colour-code by \textsf{violation.rule} if it cares about the distinction;
+the analyzer does not pre-bin. The coverage caveat of Section~6 holds:
+the model only reports a malformation when it has explicitly anticipated
+it. A surface for which no error-tagged path exists falls through to
+unknown, exactly as before.
+
+\begin{remark}
+The mal-rule mechanism here, like \texttt{\%mal} for syntax, is an
+admission that the model is incomplete: every error type the engine
+recognises has to be authored by hand. The notes do not pretend otherwise.
+What the mechanism buys is the right place to put the next admitted
+error --- author it once in the grammar file; the rest of the pipeline
+already knows how to carry it.
+\end{remark}
 
 \section{Feature structures in the grammar}
 
@@ -674,6 +1044,11 @@ between model-theoretic and generative-enumerative syntactic frameworks}. In
 LACL, 2001.
 \bibitem{kasper1986} R.\ Kasper and W.\ Rounds. \emph{A logical semantics for
 feature structures}. In ACL, 1986.
+\bibitem{koskenniemi1983} K.\ Koskenniemi. \emph{Two-Level Morphology: A
+General Computational Model for Word-Form Recognition and Production}.
+Publications of the Department of General Linguistics, University of Helsinki,
+1983.
+\bibitem{karttunen1995} L.\ Karttunen. \emph{The replace operator}. In ACL, 1995.
 \bibitem{jurafsky} D.\ Jurafsky and J.\ H.\ Martin. \emph{Speech and Language
 Processing}, 3rd ed.\ (draft).
 \bibitem{sipser} M.\ Sipser. \emph{Introduction to the Theory of Computation}.
