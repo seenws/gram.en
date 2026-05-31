@@ -1,4 +1,7 @@
 ![gram.en banner image](./assets/gramen.png)
+*"Dude, why an elephant?"*
+
+*"They're cute."*
 
 # gram.en
 
