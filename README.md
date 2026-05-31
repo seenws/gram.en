@@ -1,4 +1,4 @@
-![gram.en banner image](./gramen.png)
+![gram.en banner image](./assets/gramen.png)
 
 # gram.en
 
