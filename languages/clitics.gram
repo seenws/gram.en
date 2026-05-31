@@ -1,31 +1,48 @@
-# Clitics and the auxiliaries/copulas they attach to (%include'd from en.gram).
+# Clitics, copulas, and auxiliaries (%include'd from en.gram).
 #
 # The tokenizer splits contractions (don't -> do + n't, I'm -> I + 'm), so the
-# clitic forms below need lexical entries -- otherwise the split pieces fail to
-# analyse. `vagr` is the present-tense agreement value (3sg vs everything-else,
-# n3sg); modal-like auxiliaries carry none, so they agree with any subject.
+# clitic forms need lexical entries. `vagr` is present-tense agreement (3sg vs
+# everything-else, n3sg); a modal carries none, so it agrees with any subject.
+# `req` is the verb form an auxiliary requires of its complement:
+#   bare  -> base form     (modal, do-support):    will bark, doesn't bark
+#   pastp -> past participle (perfect "have"):      has liked
+#   prp   -> present participle (progressive "be"): is barking
 
 # Negation clitic. Attaches after a copula or auxiliary (isn't, don't, won't).
 n't : Neg  <lemma>=not
 
-# Copula clitics -- forms of "be" that predicate something of the subject.
-'m  : Cop  <vagr>=n3sg  <lemma>=be     # I'm
-'re : Cop  <vagr>=n3sg  <lemma>=be     # we're / you're / they're
-'s  : Cop  <vagr>=3sg   <lemma>=be     # he's a dog        ('s as "is")
-
-# Full copula forms, needed because isn't/aren't split to is/are + n't.
+# Copulas -- forms of "be" predicating an NP of the subject (he's a dog). The
+# same forms are progressive auxiliaries below (he's barking); the parser keeps
+# whichever fits.
+'m  : Cop  <vagr>=n3sg  <lemma>=be
+'re : Cop  <vagr>=n3sg  <lemma>=be
+'s  : Cop  <vagr>=3sg   <lemma>=be
 is  : Cop  <vagr>=3sg   <lemma>=be
 am  : Cop  <vagr>=n3sg  <lemma>=be
 are : Cop  <vagr>=n3sg  <lemma>=be
 
-# Auxiliary clitics. ''s and 'd are genuinely ambiguous, so each gets the
-# entries it can stand for; the parser keeps whichever analysis yields a parse.
-'ve : Aux  <vagr>=n3sg  <lemma>=have   # I've liked ...        (perfect "have")
-'s  : Aux  <vagr>=3sg   <lemma>=have   # he's liked ...        ('s as "has")
-'ll : Aux               <lemma>=will   # I'll bark             (modal "will")
-'d  : Aux               <lemma>=would  # I'd bark              ('d as "would")
-'d  : Aux               <lemma>=had    # I'd liked ...         ('d as "had")
+# Progressive "be" + present participle: he is barking, I'm barking.
+'s  : Aux  <vagr>=3sg   <req>=prp  <lemma>=be
+'m  : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
+'re : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
+is  : Aux  <vagr>=3sg   <req>=prp  <lemma>=be
+am  : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
+are : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
 
-# Do-support auxiliaries (don't / doesn't split to do / does + n't).
-do   : Aux  <vagr>=n3sg  <lemma>=do
-does : Aux  <vagr>=3sg   <lemma>=do
+# Perfect "have" + past participle: I've liked, he has liked, I'd liked (had).
+'ve : Aux  <vagr>=n3sg  <req>=pastp  <lemma>=have
+'s  : Aux  <vagr>=3sg   <req>=pastp  <lemma>=have   # 's = has
+have : Aux <vagr>=n3sg  <req>=pastp  <lemma>=have
+has  : Aux <vagr>=3sg   <req>=pastp  <lemma>=have
+had  : Aux              <req>=pastp  <lemma>=had
+'d   : Aux              <req>=pastp  <lemma>=had    # 'd = had
+
+# Modals + base form: I'll bark, I would bark. No agreement.
+'ll   : Aux <req>=bare  <lemma>=will
+will  : Aux <req>=bare  <lemma>=will
+'d    : Aux <req>=bare  <lemma>=would   # 'd = would
+would : Aux <req>=bare  <lemma>=would
+
+# Do-support + base form: don't / doesn't (split to do / does + n't).
+do   : Aux  <vagr>=n3sg  <req>=bare  <lemma>=do
+does : Aux  <vagr>=3sg   <req>=bare  <lemma>=do

@@ -3,6 +3,7 @@
 S -> NP VP
     <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
     <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
+    <VP vform> = fin        # the head of a main clause must be a finite verb
 
 NP -> Det N
     <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
@@ -25,9 +26,11 @@ NP -> Pron
 
 VP -> V
     <VP vagr> = <V vagr>
+    <VP vform> = <V vform>
 
 VP -> V NP
     <VP vagr> = <V vagr>
+    <VP vform> = <V vform>
     <NP case> = acc         ! "the object must be an accusative pronoun"  fix: accusative-pronoun
 # A Det-N NP sets no `case`, so it stays open and fills subject or object
 # position freely; only pronouns can clash on case.
@@ -37,19 +40,27 @@ VP -> V NP
 # (he isn't a dog). Agreement is carried by the copula.
 VP -> Cop NP
     <VP vagr> = <Cop vagr>
+    <VP vform> = fin
 VP -> Cop Neg NP
     <VP vagr> = <Cop vagr>
+    <VP vform> = fin
 
-# Auxiliaries take a verb phrase: I'll bark, I've liked the dog, I don't bark.
-# An auxiliary phrase is itself a VP (VP -> AuxP), so it satisfies S -> NP VP.
-# Agreement lives on the auxiliary; the inner verb's form is not constrained
-# (there's no finite/nonfinite split yet, so e.g. "I'll barked" is under-rejected).
+# Auxiliaries take a verb phrase whose form they select (the modal/do want the
+# base form, perfect "have" a past participle, progressive "be" an -ing form):
+# I'll bark, I've liked the dog, he is barking, I don't bark. The auxiliary is
+# the finite head, so an auxiliary phrase is a finite VP (VP -> AuxP) and
+# satisfies S -> NP VP; agreement lives on the auxiliary.
 AuxP -> Aux VP
     <AuxP vagr> = <Aux vagr>
+    <AuxP vform> = fin
+    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree-verb
 AuxP -> Aux Neg VP
     <AuxP vagr> = <Aux vagr>
+    <AuxP vform> = fin
+    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree-verb
 VP -> AuxP
     <VP vagr> = <AuxP vagr>
+    <VP vform> = <AuxP vform>
 
 
 PP -> P NP

@@ -17,15 +17,16 @@ export function morph_analyze(g: grammar, surface: string): lex_entry[] {
 
         // Run the rewrite cascade upward to recover the underlying strings the
         // lexicon recognises (e.g. "chased" -> "chaseed"). With no %rule the
-        // cascade is empty, so the only candidate is the surface itself and
-        // this reduces to the plain apply_down(fst, surface) lookup.
+        // cascade is empty, so the only candidate is the surface itself and this
+        // reduces to the plain apply_down(fst, surface) lookup.
         //
         // The cascade always includes identity, so the raw underlying form
-        // ("chaseed") is also accepted as a candidate -- a known
-        // under-rejection that a morpheme-boundary symbol would close. It only
-        // ever fails to flag a non-word, never mis-flags a real one, so it's
-        // left as a documented trade-off rather than reworking the lexicon
-        // FST's surface-literal tape.
+        // ("chaseed") also resolves -- a residual under-rejection. It is a
+        // consequence of optional (vs. obligatory) replace, not of the lexicon's
+        // surface-literal tape: a morpheme-boundary symbol does not close it
+        // (measured), and inserting one would make analysis ~5x slower, so the
+        // tape stays boundary-free. The wart only ever fails to flag a non-word,
+        // never mis-flags a real one.
         for (const cand of apply_cascade_up(g.morph_cascade, key)) {
             const cand_str = show_symbols(cand);
 

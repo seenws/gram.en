@@ -1,5 +1,5 @@
 import { type feature_struct, fs, atom, unify, get_path, set_path } from "./featstruct.ts";
-import type { grammar, rule, equation, term, path, diag } from "./grammar.ts";
+import type { grammar, rule, equation, term, path, diag, const_ref } from "./grammar.ts";
 import { morph_analyze } from "./morph.ts";
 
 export type tree =
@@ -259,22 +259,28 @@ function mother_edge(c: ctx, it: item): edge | null {
     };
 }
 
-function resolve_term(env: Map<string, feature_struct>, t: term): feature_struct | undefined {
-    if (t.kind === "value") return atom(t.value);
+// The equation environment: the mother's feature structure plus one per daughter,
+// addressed positionally by const_ref (so two same-category daughters stay
+// distinct, unlike the old symbol-keyed map).
+type eqenv = { mother: feature_struct; daughters: feature_struct[] };
 
-    const base = env.get(t.path.constituent);
-
-    if (base === undefined) return undefined;
-
-    return get_path(base, t.path.feats);
+function env_get(env: eqenv, ref: const_ref): feature_struct {
+    return ref.kind === "mother" ? env.mother : env.daughters[ref.index];
 }
 
-function write_back(env: Map<string, feature_struct>, p: path, val: feature_struct): void {
-    const base = env.get(p.constituent);
+function env_set(env: eqenv, ref: const_ref, val: feature_struct): void {
+    if (ref.kind === "mother") env.mother = val;
+    else env.daughters[ref.index] = val;
+}
 
-    if (base === undefined) return;
+function resolve_term(env: eqenv, t: term): feature_struct | undefined {
+    if (t.kind === "value") return atom(t.value);
 
-    env.set(p.constituent, set_path(base, p.feats, val));
+    return get_path(env_get(env, t.path.ref), t.path.feats);
+}
+
+function write_back(env: eqenv, p: path, val: feature_struct): void {
+    env_set(env, p.ref, set_path(env_get(env, p.ref), p.feats, val));
 }
 
 function apply_equations(
@@ -284,9 +290,12 @@ function apply_equations(
     start: number,
     end: number,
 ): { lhs_fs: feature_struct; eq_violations: violation[] } | null {
-    const env = new Map<string, feature_struct>();
-    env.set(r.lhs, fs());
-    r.rhs.forEach((sym, idx) => env.set(sym, children[idx].tree.fs));
+    // The mother inherits the head daughter's structure when the rule has a head
+    // (head percolation), else starts empty and is built from the equations.
+    const env: eqenv = {
+        mother: r.head !== null ? children[r.head].tree.fs : fs(),
+        daughters: children.map((k) => k.tree.fs),
+    };
 
     const eq_violations: violation[] = [];
 
@@ -310,14 +319,15 @@ function apply_equations(
         if (eq.right.kind === "path") write_back(env, eq.right.path, u);
     }
 
-    return { lhs_fs: env.get(r.lhs) ?? fs(), eq_violations };
+    return { lhs_fs: env.mother, eq_violations };
 }
 
 function make_violation(r: rule, eq: equation, d: diag, children: edge[], start: number, end: number): violation {
     // highlight the right-hand constituent for a two-constituent constraint, else the left
-    const c = eq.right.kind === "path" ? eq.right.path.constituent : eq.left.constituent;
-    const idx = r.rhs.indexOf(c);
-    const span: [number, number] = idx >= 0 ? [children[idx].start, children[idx].end] : [start, end];
+    const ref = eq.right.kind === "path" ? eq.right.path.ref : eq.left.ref;
+    const span: [number, number] = ref.kind === "daughter"
+        ? [children[ref.index].start, children[ref.index].end]
+        : [start, end];
 
     return { rule: r.name, message: d.message, fix_strategies: d.fixes, span };
 }
@@ -327,7 +337,7 @@ export function full_parses(c: ctx, n: number): edge[] {
 }
 
 export function match_sequence(c: ctx, syms: string[], n: number): edge[][] {
-    const seq_rule: rule = { lhs: "__SEQ__", rhs: syms, eqs: [], name: `__SEQ__ -> ${syms.join(" ")}` };
+    const seq_rule: rule = { lhs: "__SEQ__", rhs: syms, eqs: [], name: `__SEQ__ -> ${syms.join(" ")}`, head: null };
     const by_lhs = rules_by_lhs([...c.g.rules, seq_rule]);
 
     // the completed __SEQ__ edge's children are exactly the matched constituents

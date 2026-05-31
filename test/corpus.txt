@@ -1,0 +1,84 @@
+# Regression corpus for the English fragment.
+#
+# Format:  <label> | <sentence> [| <detail>]
+#   ok      -> grammatical
+#   bad     -> ungrammatical; detail = substring the violation message/rule must contain
+#   none    -> no-analysis (out of coverage, NOT a claim of ungrammaticality)
+#   unknown -> unknown-word; detail = comma-separated expected unknown words
+#
+# This is the correctness net: grammar/lexicon changes must keep every line green.
+
+# --- grammatical: core clauses -------------------------------------------------
+ok | the dog barks
+ok | the cat barks
+ok | dogs bark
+ok | the dog chased the cat
+ok | the cat chased the dog
+ok | he chased the dog
+ok | the children bark
+ok | the dog likes the cat
+
+# --- grammatical: productive past tense ---------------------------------------
+ok | the cat chased the dog
+ok | the dog liked the cat
+ok | I tried
+
+# --- grammatical: PP attachment -----------------------------------------------
+ok | the cat chased the dog with the dog
+ok | the dog barks with him
+
+# --- grammatical: clitics / auxiliaries ---------------------------------------
+ok | he's a dog
+ok | I'm a dog
+ok | they're dogs
+ok | I don't bark
+ok | he doesn't bark
+ok | I'll bark
+ok | he'll bark
+ok | I've liked the dog
+ok | he's liked the dog
+
+# --- grammatical: verb/auxiliary expansion (modal, perfect, progressive) ------
+ok | I will bark
+ok | he will bark
+ok | I have liked the dog
+ok | he has liked the dog
+ok | he is barking
+ok | I am barking
+ok | they are barking
+ok | he's barking
+
+# --- ungrammatical: wrong verb form after an auxiliary ------------------------
+bad | I'll barked            | verb form
+bad | I will barked          | verb form
+bad | I have bark            | verb form
+bad | I've bark              | verb form
+bad | I is barking           | agreement
+
+# --- ungrammatical: agreement -------------------------------------------------
+bad | the dog bark            | agreement
+bad | dogs barks              | agreement
+bad | he don't bark           | agreement
+bad | I's a dog               | agreement
+
+# --- ungrammatical: case ------------------------------------------------------
+bad | the cat chased I        | accusative
+bad | the dog barks with he   | accusative
+bad | me'll bark              | nominative
+
+# --- ungrammatical: determiner / article --------------------------------------
+bad | an dog barks            | article
+
+# --- ungrammatical: morphology mal-rule ---------------------------------------
+bad | the childs bark         | irregular plural
+
+# --- ungrammatical: word order (syntactic mal-rule) ---------------------------
+bad | barks the dog           | word order
+
+# --- out of coverage (no analysis, not ungrammatical) -------------------------
+none | the the dog
+none | with the dog
+
+# --- unknown words ------------------------------------------------------------
+unknown | glorp barks          | glorp
+unknown | the wug barks        | wug

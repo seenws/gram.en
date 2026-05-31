@@ -25,20 +25,26 @@
     +N+Pl : s  <num>=pl <pers>=3 <vagr>=n3sg
 
 %lex V-reg : V
-    +V+Pres+Bare :    <vagr>=n3sg
-    +V+Pres+3Sg  : s  <vagr>=3sg
-    +V+Past      : ed <tense>=past
-    # Past tense doesn't agree in English ("I/he/they barked"), so it carries no
-    # `vagr`; an unset feature unifies with any subject. The stored suffix is the
-    # underlying "ed"; the %rule spelling rules below realise the surface.
+    # English verb forms are syncretic: one surface often spells several forms.
+    # `vform` names the form so auxiliaries can select their complement and the
+    # main clause can require a finite head; the parser picks the analysis that
+    # fits. "bark" is base (after a modal/do) or non-3sg present; "barked" is
+    # finite past or past participle; "barking" is the present participle.
+    +V+Inf       :     <vform>=bare                          # bark   (base form)
+    +V+Pres+Bare :     <vform>=fin <tense>=pres <vagr>=n3sg  # bark   (I/you/they bark)
+    +V+Pres+3Sg  : s   <vform>=fin <tense>=pres <vagr>=3sg   # barks
+    +V+Past      : ed  <vform>=fin <tense>=past              # barked (finite past; no agreement)
+    +V+PastP     : ed  <vform>=pastp <tense>=past            # barked (past participle, after have)
+    +V+PrP       : ing <vform>=prp                           # barking (after be)
 
 # Spelling rules, applied in generation order (underlying -> surface) and run
 # backwards by morph_analyze to recover the underlying form during analysis.
 # The lexicon filters out any overgeneration these produce.
-#   - drop a stem-final silent e before "ed":  chase+ed -> chased,  like+ed -> liked
-#     (only after a consonant, so it never touches e.g. "freed")
-#   - y -> i before "ed":  try+ed -> tried
+#   - drop a stem-final silent e before "ed"/"ing":  chase+ed -> chased,
+#     chase+ing -> chasing  (only after a consonant, so it never touches "freed")
+#   - y -> i before "ed":  try+ed -> tried   (but "trying", so not before "ing")
 %rule e:0 => Cons _ e d
+%rule e:0 => Cons _ i n g
 %rule y:i => _ e d
 
 # The second +N+Pl entry recognises the anticipated wrong plural "*childs"

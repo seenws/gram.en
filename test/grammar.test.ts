@@ -49,7 +49,9 @@ test("a paradigm-derived noun carries its features", () => {
 });
 
 test("ambiguous form has multiple analyses", () => {
-    const cats = morph_analyze(g, "bark").map((e) => e.cat).sort();
+    // "bark" is a noun and a verb; the verb is itself syncretic (base form and
+    // non-3sg present), so there are several analyses across two categories.
+    const cats = [...new Set(morph_analyze(g, "bark").map((e) => e.cat))].sort();
     assert.deepEqual(cats, ["N", "V"]);
 });
 

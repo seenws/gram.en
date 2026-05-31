@@ -42,6 +42,8 @@
 %feature vagr    : 3sg | n3sg
 %feature initial : cons | vowel
 %feature tense   : pres | past | bare
+%feature vform   : bare | fin | pastp | prp
+%feature req     : bare | pastp | prp
 %feature lemma   : *
 
 %include closed.gram

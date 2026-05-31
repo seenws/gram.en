@@ -6,11 +6,18 @@ import { type resolver, expand_grammar } from "./loader.ts";
 import { type char_classes, type cascade, type rule_spec, parse_rule, compile_cascade } from "./morph_rules.ts";
 import { tokenize_symbols } from "./fst.ts";
 
-export type path = { constituent: string; feats: string[] };
+// A constraint path names a constituent of a production -- the mother (LHS) or a
+// daughter by its RHS position -- then a feature path into its structure. The
+// surface name written in the .gram file (an alias, or a category when unique)
+// is resolved to one of these at load time (see make_resolver).
+export type const_ref = { kind: "mother" } | { kind: "daughter"; index: number };
+export type path = { ref: const_ref; feats: string[] };
 export type term = { kind: "path"; path: path } | { kind: "value"; value: string };
 export type diag = { message: string; fixes: string[] };
 export type equation = { left: path; right: term; diag: diag | null };
-export type rule = { lhs: string; rhs: string[]; eqs: equation[]; name: string };
+// `head` is the daughter index the mother inherits its features from when the LHS
+// category occurs exactly once among the daughters (head percolation), else null.
+export type rule = { lhs: string; rhs: string[]; eqs: equation[]; name: string; head: number | null };
 export type mal_rule = { lhs: string; rhs: string[]; err: string; fix: string | null; name: string };
 export type lex_entry = { form: string; cat: string; feats: feature_struct; morph_err?: morph_diag };
 
@@ -56,20 +63,88 @@ function prod_name(lhs: string, rhs: string[]): string {
     return `${lhs} -> ${rhs.join(" ")}`;
 }
 
-function parse_production(s: string, loc: string): { lhs: string; rhs: string[] } {
+// A production constituent: a category symbol with an optional alias written as
+// `alias:CAT`. The category drives parsing/scanning; the alias (and, when unique,
+// the category itself) is how equations address the constituent.
+type constituent = { cat: string; alias?: string };
+
+function split_alias(tok: string, loc: string): constituent {
+    const ci = tok.indexOf(":");
+
+    if (ci < 0) return { cat: tok };
+
+    const alias = tok.slice(0, ci).trim();
+    const cat = tok.slice(ci + 1).trim();
+
+    if (!alias || !cat) throw new grammar_error(loc, `malformed alias in '${tok}' (expected alias:CAT)`);
+
+    return { cat, alias };
+}
+
+function parse_production(s: string, loc: string): { lhs: constituent; rhs: constituent[] } {
     const i = s.indexOf("->");
 
     if (i < 0) throw new grammar_error(loc, `production missing "->": ${s}`);
 
-    const lhs = s.slice(0, i).trim();
-    const rhs = s.slice(i + 2).trim().split(/\s+/).filter(Boolean);
+    const lhs_tok = s.slice(0, i).trim();
+    const rhs_toks = s.slice(i + 2).trim().split(/\s+/).filter(Boolean);
 
-    if (lhs.length === 0 || rhs.length === 0) throw new grammar_error(loc, `malformed production: ${s}`);
+    if (lhs_tok.length === 0 || rhs_toks.length === 0) throw new grammar_error(loc, `malformed production: ${s}`);
 
-    return { lhs, rhs };
+    return { lhs: split_alias(lhs_tok, loc), rhs: rhs_toks.map((t) => split_alias(t, loc)) };
 }
 
-function parse_path(s: string, loc: string): path {
+// The daughter index the mother inherits from (LHS category occurs exactly once
+// among the daughters), else null -- replicating the symbol-keyed head sharing
+// the env used to do implicitly.
+function compute_head(lhs_cat: string, rhs_cats: string[]): number | null {
+    const idxs = rhs_cats.flatMap((c, i) => (c === lhs_cat ? [i] : []));
+
+    return idxs.length === 1 ? idxs[0] : null;
+}
+
+type const_resolver = (name: string, loc: string) => const_ref;
+
+// Resolves an equation's constituent name to a const_ref, in priority order:
+// (1) a declared alias; (2) the LHS category, which always denotes the mother
+// (what the rule defines); (3) a category borne by exactly one daughter (so
+// existing rules keep working). A daughter category that occurs more than once
+// must be aliased -- naming it bare is a load error -- as is an unknown name.
+function make_resolver(lhs: constituent, rhs: constituent[], loc: string): const_resolver {
+    const aliases = new Map<string, const_ref>();
+    const add_alias = (a: string | undefined, ref: const_ref): void => {
+        if (a === undefined) return;
+        if (aliases.has(a)) throw new grammar_error(loc, `duplicate alias '${a}' in production`);
+        aliases.set(a, ref);
+    };
+    const daughters_by_cat = new Map<string, number[]>();
+
+    add_alias(lhs.alias, { kind: "mother" });
+    rhs.forEach((c, i) => {
+        add_alias(c.alias, { kind: "daughter", index: i });
+        const bucket = daughters_by_cat.get(c.cat);
+        if (bucket) bucket.push(i);
+        else daughters_by_cat.set(c.cat, [i]);
+    });
+
+    return (name, eqloc) => {
+        const a = aliases.get(name);
+
+        if (a) return a;
+        if (name === lhs.cat) return { kind: "mother" };
+
+        const idxs = daughters_by_cat.get(name);
+
+        if (idxs && idxs.length === 1) return { kind: "daughter", index: idxs[0] };
+        if (idxs && idxs.length > 1) {
+            throw new grammar_error(eqloc, `ambiguous constituent '${name}' (matches ${idxs.length} daughters); give it an alias`);
+        }
+
+        throw new grammar_error(eqloc, `unknown constituent '${name}'`);
+    };
+}
+
+function parse_path(s: string, loc: string, resolve: const_resolver): path {
     const m = s.match(/^<([^>]*)>$/);
 
     if (!m) throw new grammar_error(loc, `malformed path: ${s}`);
@@ -78,7 +153,7 @@ function parse_path(s: string, loc: string): path {
 
     if (toks.length === 0) throw new grammar_error(loc, `empty path: ${s}`);
 
-    return { constituent: toks[0], feats: toks.slice(1) };
+    return { ref: resolve(toks[0], loc), feats: toks.slice(1) };
 }
 
 function parse_quoted(s: string, loc: string): string {
@@ -170,7 +245,7 @@ function compute_sigma(morph: morph_data, classes: char_classes, specs: readonly
     return [...sigma];
 }
 
-function parse_equation(line: string, loc: string): equation {
+function parse_equation(line: string, loc: string, resolve: const_resolver): equation {
     const bang = line.indexOf("!");
     const core = (bang >= 0 ? line.slice(0, bang) : line).trim();
     const diag_str = bang >= 0 ? line.slice(bang + 1).trim() : null;
@@ -178,10 +253,10 @@ function parse_equation(line: string, loc: string): equation {
 
     if (eq < 0) throw new grammar_error(loc, `equation missing "=": ${line}`);
 
-    const left = parse_path(core.slice(0, eq).trim(), loc);
+    const left = parse_path(core.slice(0, eq).trim(), loc, resolve);
     const right_str = core.slice(eq + 1).trim();
     const right: term = right_str.startsWith("<")
-        ? { kind: "path", path: parse_path(right_str, loc) }
+        ? { kind: "path", path: parse_path(right_str, loc, resolve) }
         : { kind: "value", value: right_str };
 
     let d: diag | null = null;
@@ -217,7 +292,7 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
     const morph_lines: string[] = [];
 
     type cursor =
-        | { kind: "rule"; rule: rule }
+        | { kind: "rule"; rule: rule; resolve: const_resolver }
         | { kind: "mal"; mal: mal_rule }
         | { kind: "lex" }
         | null;
@@ -253,17 +328,26 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
                 morph_lines.push(raw);
                 cur = { kind: "lex" };
             } else if (trimmed.startsWith("%mal")) {
+                // mal-rules carry no equations, so aliases are irrelevant here
                 const { lhs, rhs } = parse_production(trimmed.slice(4).trim(), loc);
-                const mal: mal_rule = { lhs, rhs, err: "", fix: null, name: prod_name(lhs, rhs) };
+                const cats = rhs.map((c) => c.cat);
+                const mal: mal_rule = { lhs: lhs.cat, rhs: cats, err: "", fix: null, name: prod_name(lhs.cat, cats) };
                 malrules.push(mal);
-                nonterminals.add(lhs);
+                nonterminals.add(lhs.cat);
                 cur = { kind: "mal", mal };
             } else if (trimmed.includes("->")) {
                 const { lhs, rhs } = parse_production(trimmed, loc);
-                const r: rule = { lhs, rhs, eqs: [], name: prod_name(lhs, rhs) };
+                const cats = rhs.map((c) => c.cat);
+                const r: rule = {
+                    lhs: lhs.cat,
+                    rhs: cats,
+                    eqs: [],
+                    name: prod_name(lhs.cat, cats),
+                    head: compute_head(lhs.cat, cats),
+                };
                 rules.push(r);
-                nonterminals.add(lhs);
-                cur = { kind: "rule", rule: r };
+                nonterminals.add(lhs.cat);
+                cur = { kind: "rule", rule: r, resolve: make_resolver(lhs, rhs, loc) };
             } else if (trimmed.includes(":")) {
                 const entry = parse_lex_entry(trimmed, loc);
                 const key = entry.form.toLowerCase();
@@ -283,7 +367,7 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
             if (cur === null) throw new grammar_error(loc, `indented line without a preceding rule: ${trimmed}`);
 
             if (cur.kind === "rule") {
-                cur.rule.eqs.push(parse_equation(trimmed, loc));
+                cur.rule.eqs.push(parse_equation(trimmed, loc, cur.resolve));
             } else if (cur.kind === "lex") {
                 morph_lines.push(raw);
             } else if (trimmed.startsWith("*ERR")) {
@@ -308,6 +392,7 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
             throw new grammar_error(loc, (e as Error).message);
         }
     });
+
     const morph_cascade = compile_cascade(compute_sigma(morph, classes, specs), specs, classes);
 
     validate_features(features, lexicon, rules, morph);
