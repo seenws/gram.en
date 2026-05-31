@@ -44,10 +44,13 @@
 %feature tense   : pres | past | bare
 %feature vform   : bare | fin | pastp | prp
 %feature req     : bare | pastp | prp
+%feature degree  : pos | comp | sup
 %feature lemma   : *
 
 %include closed.gram
 %include clitics.gram
+%include adjectives.gram
+%include adverbs.gram
 %include morph.gram
 %import  lexicon.tsv
 %include syntax.gram

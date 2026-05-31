@@ -75,6 +75,90 @@ bad | the childs bark         | irregular plural
 # --- ungrammatical: word order (syntactic mal-rule) ---------------------------
 bad | barks the dog           | word order
 
+# --- grammatical: adjectives (attributive + predicative) ----------------------
+ok | the big dog barks
+ok | a big dog barks
+ok | an old dog barks
+ok | the old dog barks
+ok | big dogs bark
+ok | the small cat chased the big dog
+ok | the dog is big
+ok | the dogs are big
+ok | he is happy
+ok | he's happy
+ok | he isn't happy
+
+# --- grammatical: degree modifiers and stacked adjectives ---------------------
+ok | the very big dog barks
+ok | a very big dog barks
+ok | the dog is very big
+ok | the big old dog barks
+ok | a big old dog barks
+ok | an old big dog barks
+ok | the small old dog barks
+
+# --- ungrammatical: article agreement through an adjective --------------------
+bad | an big dog barks       | article
+bad | a old dog barks        | article
+bad | an very big dog barks  | article
+bad | a old big dog barks    | article
+bad | an big old dog barks   | article
+
+# --- ungrammatical: number / agreement still fire through an adjective ---------
+bad | a big dogs bark        | number
+bad | the big dog bark       | agreement
+
+# --- grammatical: comparative / superlative adjectives ------------------------
+ok | the bigger dog barks
+ok | the biggest dog barks
+ok | the smaller cat barks
+ok | the tallest dog barks
+ok | an older dog barks
+ok | the happier dog barks
+ok | the larger dog barks
+ok | the redder dog barks
+ok | the dog is bigger
+ok | the dog is smaller
+ok | the dog is better
+ok | the best dog barks
+
+# --- ungrammatical: article agreement through a comparative -------------------
+bad | an bigger dog barks    | article
+bad | a older dog barks      | article
+
+# --- out of coverage: "good" is suppletive, so *gooder is not a word ----------
+unknown | the gooder dog barks | gooder
+
+# --- grammatical: coordination (NP "and"/"or", and clause) --------------------
+ok | the dog and the cat bark
+ok | the dog and the cat chased the dog
+ok | dogs and cats bark
+ok | I like the dog and the cat
+ok | the dog or the cat barks
+ok | the dog or the cat bark
+ok | the dog barks and the cat barks
+
+# --- ungrammatical: "and" forces plural agreement -----------------------------
+bad | the dog and the cat barks | agreement
+bad | a dog and a cat barks      | agreement
+
+# --- coordinated pronouns share the coordinate's role-case --------------------
+ok  | he and I bark
+ok  | I like him and the dog
+bad | me and him bark         | nominative
+bad | me and the dog bark     | nominative
+bad | I like he and the dog   | accusative
+
+# --- grammatical: manner adverbs (pre- and post-verbal) -----------------------
+ok | the dog barks loudly
+ok | the dog quickly barks
+ok | the cat chased the dog quickly
+ok | the dogs bark loudly
+ok | the big dog barks loudly
+
+# --- ungrammatical: agreement still fires through an adverb -------------------
+bad | the dog bark loudly | agreement
+
 # --- out of coverage (no analysis, not ungrammatical) -------------------------
 none | the the dog
 none | with the dog

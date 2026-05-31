@@ -24,6 +24,12 @@ to   : P
 with : P
 on   : P
 
+# Coordinating conjunctions. "and" makes a coordinated NP plural ("the dog and
+# the cat bark"); "or" leaves number open, so both "the dog or the cat is" and
+# "... are" are accepted rather than falsely flagging the correct singular.
+and : Conj  <num>=pl  <vagr>=n3sg
+or  : Conj
+
 # Regular past tense ("chased", "liked", "barked", "tried") is now productive:
 # see the V-reg `+V+Past : ed` entry and the %rule spelling adjustments in
 # morph.gram. Only genuinely irregular verbs would stay explicit here.

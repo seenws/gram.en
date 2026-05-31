@@ -5,6 +5,10 @@ S -> NP VP
     <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
     <VP vform> = fin        # the head of a main clause must be a finite verb
 
+# Clause coordination: "the dog barks and the cat barks". Each conjunct is an
+# independent S, so no agreement crosses the conjunction.
+S -> S Conj S
+
 NP -> Det N
     <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
     <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
@@ -18,11 +22,59 @@ NP -> N
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
 
+# Attributive adjectives. The article agrees with the adjective's initial sound
+# ("a big dog", "an old dog"), so the article check moves onto the AdjP; the
+# adjective is otherwise transparent to number/person/agreement.
+NP -> Det AdjP N
+    <Det num> = <N num>            ! "determiner-noun number agreement"  fix: agree-det | agree-noun
+    <AdjP initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+NP -> AdjP N
+    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+# An adjective phrase is an optional degree word ("very") followed by one or more
+# adjectives ("big old"). Its `initial` -- what the article agrees with -- is its
+# leftmost word. The trailing adjectives are collected by AdjList, a separate
+# symbol so the recursion never collides with AdjP's own head, which would
+# otherwise force the phrase to inherit the last adjective's initial rather than
+# the first.
+AdjP -> Adj
+    <AdjP initial> = <Adj initial>
+AdjP -> Deg Adj
+    <AdjP initial> = <Deg initial>
+AdjP -> Adj AdjList
+    <AdjP initial> = <Adj initial>
+AdjP -> Deg Adj AdjList
+    <AdjP initial> = <Deg initial>
+
+AdjList -> Adj
+AdjList -> Adj AdjList
+
 NP -> Pron
     <NP num>  = <Pron num>
     <NP pers> = <Pron pers>
     <NP case> = <Pron case>
     <NP vagr> = <Pron vagr>
+
+# Coordinated noun phrases. This rule has two NP daughters and an NP mother --
+# three same-category constituents -- which only works because constituent
+# addressing is positional: bare <NP ...> is the mother, and the daughters are
+# named by aliases (l, r). The conjunction drives agreement: "and" makes the
+# whole phrase plural (<and num>=pl, vagr=n3sg); "or" carries no num/vagr,
+# leaving the mother's open (so "or" agrees with either a singular or plural
+# verb). Each conjunct shares the coordinate's role-case, so "he and I" is a
+# valid subject but "me and him" is not (and "him and me" is a valid object).
+NP -> l:NP Conj r:NP
+    <NP num>  = <Conj num>
+    <NP vagr> = <Conj vagr>
+    <l case>  = <NP case>
+    <r case>  = <NP case>
 
 VP -> V
     <VP vagr> = <V vagr>
@@ -36,12 +88,19 @@ VP -> V NP
 # position freely; only pronouns can clash on case.
 
 
-# Copula predication (he's a dog, I'm a dog, they're dogs) and its negation
-# (he isn't a dog). Agreement is carried by the copula.
+# Copula predication and its negation, of a noun phrase (he's a dog) or an
+# adjective (the dog is big, he isn't happy). Agreement is carried by the copula;
+# the predicate adjective is invariant.
 VP -> Cop NP
     <VP vagr> = <Cop vagr>
     <VP vform> = fin
 VP -> Cop Neg NP
+    <VP vagr> = <Cop vagr>
+    <VP vform> = fin
+VP -> Cop AdjP
+    <VP vagr> = <Cop vagr>
+    <VP vform> = fin
+VP -> Cop Neg AdjP
     <VP vagr> = <Cop vagr>
     <VP vform> = fin
 
@@ -71,6 +130,13 @@ PP -> P NP
 # structure automatically -- correct head percolation with no equations needed.
 NP -> NP PP
 VP -> VP PP
+
+# Manner adverbs modify a verb phrase, before or after it ("the dog barks
+# loudly", "the dog quickly barks"). Like VP -> VP PP, the mother shares the head
+# VP's features by default, so the adverb is transparent to subject-verb
+# agreement and verb form.
+VP -> VP Adv
+VP -> Adv VP
 
 
 %mal S -> V NP

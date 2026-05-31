@@ -1,0 +1,14 @@
+# Adverbs (%include'd from en.gram).
+#
+# A closed list of manner adverbs for now. Productive -ly derivation is a later
+# slice: it would need adverb-forming adjectives (quick, slow, loud, ...) and the
+# -ly spelling rules, and naive -ly over the current adjective set would
+# over-generate (*bigly, *oldly). Adverbs don't inflect or agree, so they carry
+# no features; they're transparent to subject-verb agreement (a modified VP keeps
+# its head verb's features).
+loudly  : Adv
+quickly : Adv
+slowly  : Adv
+quietly : Adv
+well    : Adv
+badly   : Adv

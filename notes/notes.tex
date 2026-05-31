@@ -59,6 +59,7 @@
 \begin{document}
 \maketitle
 
+\newpage
 \begin{abstract}
 \Gram{} is an explainable grammatical analysis engine. It combines finite-state morphology,
 Earley parsing, feature-structure unification, and targeted error rules in order to diagnose
@@ -68,6 +69,11 @@ thread explains why the engine uses finite automata for morphology, a context-fr
 for syntax, and feature unification for local constraints. The engineering thread shows how
 those ideas become a compiler-like pipeline for natural language.
 \end{abstract}
+
+\newpage
+\newpage
+\tableofcontents
+\newpage
 
 \section{Introduction}
 
@@ -79,7 +85,7 @@ feature-structure unification, and rule-level diagnostic reporting.
 
 The motivating question was simple: \emph{Can a natural language be represented as a set of
 executable rules?} Programming languages such as C, Python, and R are intentionally formal
-systems. Their syntax is specified, their valid programs are sharply defined, and compilers
+systems. Their syntax and behavior is specified, and compilers
 can reject invalid input according to fixed rules. Natural languages such as English,
 Swedish, and Russian are different. They are ambiguous, exception-heavy, historically
 layered, and only partially captured by explicit rules. Human speakers nevertheless
@@ -564,8 +570,8 @@ forms that a root can take.
     +N+Pl : s <num>=pl <pers>=3
 
 %lex V-reg : V
-    +V+Base : 0  <vform>=base
-    +V+Past : ed <vform>=past
+    +V+Inf  : 0  <vform>=bare
+    +V+Past : ed <vform>=fin <tense>=past
 \end{lstlisting}
 
 A naive implementation builds one path per root-form pair. The current engine instead builds a
@@ -655,6 +661,20 @@ The recognized relation is preserved.
 For the engine, the payoff is direct: after elimination, every path step that matters consumes
 input. The search depth is bounded by the length of the word rather than by the number of hidden
 $\eps$-paths in the graph.
+
+The same machinery extends to adjectives. A regular adjective paradigm derives
+positive, comparative, and superlative forms:
+\[
+  \texttt{small} \mapsto \texttt{smaller}, \texttt{smallest},
+  \qquad
+  \texttt{happy} \mapsto \texttt{happier}, \texttt{happiest},
+  \qquad
+  \texttt{large} \mapsto \texttt{larger}, \texttt{largest}.
+\]
+The spelling rules are not adjective-specific hacks. Silent-\texttt{e} deletion,
+\texttt{y}\(\to\)\texttt{i}, and consonant doubling are morphophonemic rules in
+the rewrite cascade. The lexicon then filters the cascade by requiring the
+derived surface form to correspond to a known root and paradigm.
 
 \section{Parsing with an Earley chart}
 
@@ -807,25 +827,129 @@ viewed from the user's side.
 
 \section{Auxiliaries, clitics, and head projection}
 
-English auxiliaries expose why syntax and morphology need to interact. In \texttt{I don't bark},
-the token \texttt{n't} is not just punctuation; it participates in auxiliary structure. In
-\texttt{he doesn't bark}, agreement lives on \texttt{does}. In \texttt{he'll bark}, the modal
-\texttt{'ll} does not require the following verb to agree with the subject, but it does require
-a base-form verb.
+English auxiliaries show why morphology and syntax cannot be cleanly separated.
+In \texttt{I don't bark}, the token \texttt{n't} is not punctuation; it is part
+of the auxiliary structure. In \texttt{he doesn't bark}, subject agreement is
+carried by \texttt{does}, not by the lexical verb. In \texttt{he'll bark}, the
+modal \texttt{'ll} does not require the following verb to agree with the subject,
+but it does require that verb to appear in its base form.
 
-The grammar handles this by giving auxiliaries their own projection, \textsf{AuxP}, rather than
-forcing them into the same symbol environment as lexical verbs. This avoids accidental collisions
-between two constituents that share a category name and allows auxiliary-specific constraints to
-be stated locally.
+The grammar therefore gives auxiliaries their own projection, \textsc{AuxP},
+rather than treating them as ordinary lexical verbs. This has two advantages.
+First, auxiliary-specific constraints can be stated locally. Second, the parser
+does not accidentally merge the feature environment of an auxiliary with the
+feature environment of its complement verb.
 
-A richer English fragment should add a verb-form feature:
+The relevant distinction is not only agreement but \emph{verb form}. English
+auxiliaries select particular forms of their complements: modals and do-support
+select a bare verb, perfect \texttt{have} selects a past participle, and
+progressive \texttt{be} selects a present participle. The engine represents this
+selection with a feature
 \[
-  \textsf{vform} \in \{\textsf{base},\ \textsf{pres3sg},\ \textsf{past},
-  \ \textsf{pastpart},\ \textsf{ing}\}.
+  \textsc{vform} \in
+  \{\textsc{bare},\ \textsc{fin},\ \textsc{pastp},\ \textsc{presp}\}.
 \]
-Then modals can select base VPs, perfect \texttt{have} can select past participles, and
-progressive \texttt{be} can select \texttt{-ing} forms. This rejects errors such as
-\texttt{I'll barked} without an ad hoc rule.
+Here \textsf{bare} covers base forms such as \texttt{bark}; \textsc{fin} covers
+finite present and past forms; \textsc{pastp} covers past participles; and
+\textsc{prp} covers present participles such as \texttt{barking}.
+
+The value \textsc{fin} is intentionally coarse. English finite verbs still vary
+internally: present-tense verbs show agreement distinctions, and past-tense
+verbs usually do not. Those facts are handled by agreement features and by the
+lexical analyses emitted by morphology. For auxiliary selection, however, the
+main question is simply whether a verb can head a finite clause. Collapsing the
+finite forms into one value lets a main-clause rule require finiteness with a
+single equation:
+\[
+  \texttt{\textsc{<VP vform>} = \textsc{fin}}.
+\]
+
+English also contains substantial syncretism: one surface form may realize
+multiple grammatical forms. The engine handles this by ambiguity rather than by
+special cases. For example, \texttt{bark} may be analyzed both as a bare form and
+as a finite present form; \texttt{barked} may be analyzed both as a finite past
+form and as a past participle. The parser keeps all analyses whose features are
+compatible with the surrounding syntax and discards the rest.
+
+Auxiliary selection is then just another feature equation:
+
+\begin{lstlisting}[language=gram]
+AuxP -> Aux VP
+    <VP vform> = <Aux req>   ! "wrong verb form after the auxiliary" fix: agree-verb
+\end{lstlisting}
+
+The auxiliary carries the verb form it requires in its \texttt{req} feature.
+Modals and do-support set \texttt{req = bare}; perfect \texttt{have} sets
+\texttt{req = pastp}; progressive \texttt{be} sets \texttt{req = prp}. The rule
+does not need separate procedural checks for each auxiliary. It only unifies the
+complement's \texttt{vform} with the auxiliary's requirement.
+
+This rejects errors such as \texttt{I'll barked}. The clitic \texttt{'ll} is a
+modal auxiliary, so it requires a bare complement. The form \texttt{barked} can
+be finite past or past participle, but it is not bare, so the equation
+\[
+  \texttt{<VP vform> = <Aux req>}
+\]
+fails. Because the diagnostic is attached to that equation, the report can name
+the error as a wrong verb form after the auxiliary and suggest the compatible
+base form: \texttt{I'll bark}.
+
+\section{Nominal and adjectival structure}
+
+The early examples in the engine focus on subject--verb agreement because it is
+the smallest diagnostic that demonstrates parsing plus unification. Expanding
+coverage quickly makes noun phrases more important. English noun phrases contain
+determiners, pronouns, adjectives, degree morphology, and stacked modifiers:
+\[
+  \texttt{the big old dog}, \qquad
+  \texttt{the bigger dog}, \qquad
+  \texttt{he}, \qquad
+  \texttt{the dog}.
+\]
+The point of adding these constructions is not to introduce a new mechanism, but
+to test whether the same grammar architecture scales to more internal structure.
+
+\subsection{Adjectives and stacking}
+
+An attributive adjective modifies an NP-internal nominal projection without
+changing the head noun's agreement features. This means adjective stacking can
+be handled by recursive phrase structure while head features continue to
+percolate from the noun.
+
+\begin{lstlisting}[language=gram]
+Nom -> Adj Nom
+    <Nom agr> = <Nom.1 agr>
+\end{lstlisting}
+
+\subsection{Degree as a morphological feature}
+
+Comparative and superlative adjectives are still adjectives. The syntax does not
+need a separate category for \texttt{bigger} or \texttt{biggest}; morphology
+adds a degree feature:
+\[
+  \textsf{degree} \in \{\textsf{pos},\ \textsf{comp},\ \textsf{sup}\}.
+\]
+
+Regular adjectives use a productive paradigm:
+\[
+  \texttt{big} \mapsto \texttt{bigger}, \texttt{biggest},
+  \qquad
+  \texttt{happy} \mapsto \texttt{happier}, \texttt{happiest}.
+\]
+Suppletive adjectives such as \texttt{good}, \texttt{better}, and \texttt{best}
+are lexical entries sharing a lemma rather than outputs of a spelling rule.
+
+\subsection{Pronouns as complete noun phrases}
+
+Pronouns differ from ordinary nouns because they can project a complete noun
+phrase without a determiner. They also carry case directly:
+\[
+  \texttt{he} : \textsf{Pron}[\textsf{case}=\textsf{nom}],
+  \qquad
+  \texttt{him} : \textsf{Pron}[\textsf{case}=\textsf{acc}].
+\]
+This lets the same VP-object rule reject \texttt{the cat chased I} and accept
+\texttt{the cat chased me}.
 
 \section{The grammar language}
 
@@ -884,10 +1008,17 @@ sees the parser state that produced it.
 
 \section{Performance and accidental complexity}
 
-The core architecture is intended to be cheap on ordinary inputs. A heavy
-benchmark with a 10k-word imported lexicon revealed an important distinction:
-ordinary grammatical inputs and direct mal-rule matches remained in the
-low-millisecond range, while relaxed diagnostic recovery became much slower.
+The formal architecture of the engine is designed to keep ordinary analysis
+cheap. Morphology is finite-state, parsing is polynomial, and feature
+constraints are checked locally as rules are applied. In principle, then, a
+larger lexicon should not make every part of the system slower. Adding more
+words should increase the size of the morphology, but it should not make the
+parser repeatedly search the entire vocabulary.
+
+The heavy benchmark was built to test exactly that assumption. It imported a
+10k-word noun lexicon and measured four kinds of input: ordinary grammatical
+sentences, direct mal-rule matches, agreement errors diagnosed by constraint
+relaxation, and missing-determiner errors diagnosed by repair generation.
 
 \begin{table}[h]
 \centering
@@ -901,76 +1032,116 @@ relaxed S--V agreement      & 14 & 44.29 ms & 49.27 ms & 49.27 ms \\
 relaxed missing determiner  & 14 & 75.07 ms & 90.66 ms & 90.66 ms \\
 \bottomrule
 \end{tabular}
-\caption{Analyze-time benchmark on a 10k-word imported noun lexicon.}
+\caption{Analyze-time before indexing on a 10k-word imported noun lexicon.}
 \end{table}
 
-The benchmark exposed an accidental scaling cliff in lexical decoding. The
-parser itself was not the bottleneck. Instead, the morphology layer performed a
-linear scan over every root for each tag sequence. This made morphological
-analysis $O(R)$ per word, where $R$ is the number of roots in the lexicon.
+The result separated the ordinary path from the diagnostic path. Grammatical
+inputs and direct mal-rule matches stayed in the low-millisecond range while relaxed
+diagnostic recovery was much slower.
 
-On ordinary parses this cost was small enough to hide. Diagnostic recovery
-amplified it. The relaxed path generates candidate repairs and re-analyzes each
-candidate sentence; each re-analysis scanned the full 10k-root lexicon again.
-An operation that was invisible on a toy grammar became dominant once it was
-placed inside a repeated recovery loop.
+The cause was an accidental scaling cliff in lexical decoding. For each tag
+sequence, the morphology layer scanned every root in the lexicon to find stems
+compatible with the surface word. This made morphological analysis $O(R)$
+per word, where $R$ is the number of roots in the lexicon. On a small grammar,
+that cost was invisible. Inside diagnostic recovery, however, it was multiplied:
+each generated repair candidate triggered another analysis, and each analysis
+rescanned the full 10k-root lexicon.
 
-The fix was to index roots by surface prefix, or equivalently to reuse the trie
-structure that already stores the lexicon. Candidate lookup then changes from a
-full scan over all roots to a walk over the possible prefixes of the input word.
-The walk preserves the old semantics: overlapping stems such as \texttt{do} and
-\texttt{dog} are both discovered at their respective prefix lengths, and the
+The fix was to index roots by surface prefix, or equivalently to use the trie
+structure that already stores them. Candidate lookup then changes from a full
+scan over all roots to a walk over the possible prefixes of the input word.
+
+The indexed walk preserves the old semantics. Overlapping stems such as
+\texttt{do} and \texttt{dog} are both found, each at its own prefix length. The
 prefix is built by concatenating emitted tape symbols rather than by indexing
-directly into the string. This keeps multi-code-unit characters consistent with
-the representation used by the trie.
+directly into the string, so multi-code-unit characters remain consistent with
+the representation used by the trie. The index is memoised on the parsed
+morphology object, which is immutable after grammar loading. The $O(R)$
+construction cost is therefore paid once per grammar rather than once per token.
 
-The index is memoised on the parsed morphology object, which is immutable after
-grammar loading. The $O(R)$ construction cost is therefore paid once per grammar
-rather than once per token.
+Indexing the roots closed the lexicon-dependent part of the cliff. Indexing the
+repair candidates then reduced the remaining recovery overhead. On the original
+heavy benchmark, overall p95 fell from $77$ ms to $34$ ms after root indexing,
+and then to $16.7$ ms after fix indexing.
+
+The grammar has since grown beyond subject--verb agreement to include
+adjectives, degree morphology, coordination, adverbs, pronouns, and the auxiliary
+system, so the benchmark was re-run on the current fragment. Two things hold.
+First, the cliff stays closed: adding a 10k-word lexicon leaves the relaxed
+numbers essentially unchanged, so analysis is no longer dependent on lexicon
+size. Second, the remaining cost of diagnostic recovery comes from
+fix-candidate generation and re-parsing over the grammar, not from vocabulary
+lookup.
 
 \begin{table}[h]
 \centering
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-Input class & original & + root index & + fix index \\
+Input class & p50 & p95 & max \\
 \midrule
-grammatical                 & 4.64 ms & 1.29 ms & 1.43 ms \\
-mal-rule                    & 8.94 ms & 2.63 ms & 2.59 ms \\
-relaxed S--V agreement      & 44.3 ms & 25.8 ms & 7.22 ms \\
-relaxed missing determiner  & 75.1 ms & 33.4 ms & 15.5 ms \\
-\midrule
-overall p95 & 77 ms & 34 ms & 16.7 ms \\
+grammatical                 & 4.1 ms  & 5.1 ms  & 5.3 ms \\
+grammatical (adjective)     & 4.4 ms  & 7.8 ms  & 7.8 ms \\
+grammatical (coordination)  & 4.4 ms  & 4.8 ms  & 4.8 ms \\
+mal-rule                    & 6.0 ms  & 7.4 ms  & 7.4 ms \\
+relaxed S--V agreement      & 27.1 ms & 39.2 ms & 39.2 ms \\
+relaxed missing determiner  & 34.2 ms & 90.9 ms & 90.9 ms \\
+relaxed coordination        & 50.7 ms & 88.0 ms & 88.0 ms \\
 \bottomrule
 \end{tabular}
-\caption{p95 analyze-time improvements after indexing lexical roots and repair candidates.}
+\caption{Analyze-time on the current grammar with a 10k-word imported lexicon.
+Grammatical and mal-rule inputs remain cheap. Diagnostic recovery is costlier
+because it generates and re-parses repair candidates; its cost now scales with
+the number of triggered repair strategies rather than with the lexicon size.}
 \end{table}
 
-The broader lesson is that asymptotic costs often enter through the edges of an
-otherwise sound architecture. The formal design made morphology regular,
-parsing polynomial, and diagnostics local, but one local lookup routine still
-made recovery scale with the full lexicon. Precomputing an index keyed by the
+The broader lesson is that accidental complexity often enters through the edges
+of an otherwise sound architecture. The formal design made morphology regular,
+parsing polynomial, and diagnostics local, but one lookup routine still made
+recovery scale with the full lexicon. Precomputing an index keyed by the
 operation actually being performed removed that accidental complexity without
 changing the linguistic model.
 
 \section{Scope, limitations, and readiness for expansion}
 
-The current system is a small English fragment, not a wide-coverage grammar. It is intentionally
-conservative: it reports only errors it can localize through declared constraints, relaxed parses,
-or mal-rules. This gives up coverage in exchange for trustworthiness.
+The current system is a small English fragment, not a wide-coverage grammar. It
+is intentionally conservative: it reports only errors it can localize through
+declared constraints, relaxed parses, or mal-rules. This gives up coverage in
+exchange for trustworthiness. A missing parse is not treated as proof of a
+mistake unless the engine can point to the rule that failed.
 
-Before large-scale lexicon and rule expansion, two architectural issues are especially important:
+The last architecture-level blocker before grammar growth was constituent
+addressing. In the early format, a path such as \texttt{<NP num>} named a
+constituent by category symbol. That works when a production contains only one
+noun phrase, but it fails for coordination and ditransitives:
+\[
+  \texttt{NP -> NP Conj NP},
+  \qquad
+  \texttt{VP -> V NP NP}.
+\]
+Repeated categories now require aliases, and ambiguous bare names fail at load
+time. This means the grammar can grow without later rewriting hundreds of rules
+to distinguish same-category daughters.
 
-\begin{enumerate}[leftmargin=2em]
-  \item \textbf{Constituent addressing.} Repeated categories require indexed or aliased paths.
-        This should be fixed before writing hundreds of rules that would later need to be
-        rewritten.
-  \item \textbf{Regression corpus.} Expansion needs a labelled set of grammatical,
-        ungrammatical-with-rule, and out-of-coverage examples. Every new rule should be tested
-        against this corpus to catch regressions and spurious ambiguity.
-\end{enumerate}
+The first expansions beyond subject--verb agreement were chosen to stress
+different parts of the pipeline. Pronouns test case features and noun-phrase
+projection. Adjectives test recursive modifier structure and head-feature
+percolation. Comparative and superlative forms test productive morphology,
+spelling rules, and suppletion. Adverbs test modifier attachment outside the
+noun phrase. Coordination tests repeated-category addressing and agreement
+across parallel structures.
 
-Constituent addressing was the last architecture-level blocker before grammar
-growth; repeated categories now require aliases and fail at load time if ambiguous.
+Together, these additions check that the engine is not a collection of isolated
+grammar checks. Each new construction enters through the same pipeline:
+morphology proposes analyses, the parser builds structure, feature equations
+enforce constraints, and diagnostics are reported only when a named failure can
+be localized.
+
+The next expansion risk is therefore no longer the basic representation, but
+ambiguity management. As the grammar gains more modifiers, attachment sites, and
+lexical categories, the parser will naturally produce more competing analyses.
+The engine must continue to preserve useful ambiguity while suppressing spurious
+diagnostics. That is the main correctness pressure on future lexicon and rule
+growth.
 
 \section{The grammar file format}
 \label{sec:format}

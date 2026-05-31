@@ -19,6 +19,17 @@
     chase : V-reg            <lemma>=chase
     try   : V-reg            <lemma>=try
     child : N-irreg-children <lemma>=child <initial>=cons
+    # Regular adjectives: comparative/superlative are productive (see Adj-reg).
+    # `initial` (for article agreement) rides on the root and is unchanged by the
+    # -er/-est suffix, so "a bigger dog" / "an older dog" still agree correctly.
+    big   : Adj-reg          <lemma>=big   <initial>=cons
+    small : Adj-reg          <lemma>=small <initial>=cons
+    tall  : Adj-reg          <lemma>=tall  <initial>=cons
+    red   : Adj-reg          <lemma>=red   <initial>=cons
+    happy : Adj-reg          <lemma>=happy <initial>=cons
+    large : Adj-reg          <lemma>=large <initial>=cons
+    old   : Adj-reg          <lemma>=old   <initial>=vowel
+    angry : Adj-reg          <lemma>=angry <initial>=vowel
 
 %lex N-reg : N
     +N+Sg :    <num>=sg <pers>=3 <vagr>=3sg
@@ -37,15 +48,32 @@
     +V+PastP     : ed  <vform>=pastp <tense>=past            # barked (past participle, after have)
     +V+PrP       : ing <vform>=prp                           # barking (after be)
 
+%lex Adj-reg : Adj
+    +Adj      :     <degree>=pos    # big
+    +Adj+Comp : er  <degree>=comp   # bigger
+    +Adj+Sup  : est <degree>=sup    # biggest
+
 # Spelling rules, applied in generation order (underlying -> surface) and run
 # backwards by morph_analyze to recover the underlying form during analysis.
-# The lexicon filters out any overgeneration these produce.
-#   - drop a stem-final silent e before "ed"/"ing":  chase+ed -> chased,
-#     chase+ing -> chasing  (only after a consonant, so it never touches "freed")
-#   - y -> i before "ed":  try+ed -> tried   (but "trying", so not before "ing")
-%rule e:0 => Cons _ e d
-%rule e:0 => Cons _ i n g
-%rule y:i => _ e d
+# The lexicon filters out any overgeneration these produce. One rule set serves
+# every vowel-initial suffix (-ed, -ing, -er, -est):
+#   - drop a stem-final silent e:  chase+ed -> chased, chase+ing -> chasing,
+#     like+ed -> liked, large+er -> larger, large+est -> largest
+#   - y -> i before an e-suffix:   try+ed -> tried, happy+er -> happier
+#     (but "trying", so not before -ing)
+#   - double a final consonant of a C-V-C stem:  big+er -> bigger, red+er -> redder
+#     (the Vowel _ Vowel context fires for "biger" but not "older"/"smaller")
+#
+# Future: the silent-e rule's right context is linguistically wide (any vowel,
+# not specifically a suffix). It's safe here only because the lexicon and
+# morph_analyze discard the over-generation. Make it boundary-sensitive --
+# e.g. `e:0 => _ ^ Vowel` -- once a morpheme-boundary marker is on the tape
+# (postponed: a boundary needs the composed lexical transducer, not the
+# sequential cascade, to stay tractable).
+%rule e:0 => Cons _ Vowel
+%rule y:i => Cons _ e
+%rule g:gg => Vowel _ Vowel
+%rule d:dd => Vowel _ Vowel
 
 # The second +N+Pl entry recognises the anticipated wrong plural "*childs"
 # (the FST emits "child+N+Pl" for both surfaces; morph_analyze narrows by

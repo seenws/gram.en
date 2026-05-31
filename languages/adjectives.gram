@@ -1,0 +1,20 @@
+# Adjective closed-class bits (%include'd from en.gram).
+#
+# Regular adjectives (big, small, tall, ...) are now a morphology paradigm in
+# morph.gram so their comparative/superlative (-er/-est) are productive. This
+# file holds the pieces morphology can't derive: degree modifiers and the
+# suppletive comparison of "good".
+
+# Degree modifiers ("very big", "too small"). All are consonant-initial, so the
+# article before a modified adjective is always "a" ("a very big dog").
+very  : Deg  <initial>=cons
+too   : Deg  <initial>=cons
+so    : Deg  <initial>=cons
+quite : Deg  <initial>=cons
+
+# "good" is suppletive (better/best, not *gooder/*goodest), so it stays explicit
+# and is deliberately kept out of the Adj-reg paradigm -- the engine then reports
+# "gooder" as an unknown word rather than analyzing it.
+good   : Adj  <initial>=cons  <degree>=pos   <lemma>=good
+better : Adj  <initial>=cons  <degree>=comp  <lemma>=good
+best   : Adj  <initial>=cons  <degree>=sup   <lemma>=good

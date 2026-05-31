@@ -147,16 +147,25 @@ timing_row("pre-flattened string (no IO)", measure(() => parse_grammar(en_flat),
 // 3. Parse time -----------------------------------------------------------------
 const g = parse_grammar(en_src, { resolve });
 
-console.log("\nanalyze() per sentence");
+console.log("\nanalyze() per sentence (current grammar: adjectives, comparison, coordination, adverbs, auxiliaries)");
 const sentences: [string, string][] = [
-    ["the dog barks", "short, grammatical"],
-    ["the dog bark", "ungrammatical (relax pass)"],
-    ["he doesn't bark", "clitic + do-support"],
-    ["the cat chased the dog with the dog", "longer, PP attachment"],
+    // grammatical
+    ["the dog barks", "grammatical"],
+    ["the big old dog barks loudly", "grammatical (adj stack + adverb)"],
+    ["the bigger dog chased the cat", "grammatical (comparative)"],
+    ["the dog and the cat bark", "grammatical (coordination)"],
+    ["he is barking", "grammatical (progressive)"],
+    // relaxed / diagnostic (the path that re-parses repair candidates)
+    ["the dog bark", "relaxed (subject-verb agreement)"],
+    ["the dog and the cat barks", "relaxed (coordination agreement)"],
+    ["an big dog barks", "relaxed (article through adjective)"],
+    ["me and him bark", "relaxed (coordinate case)"],
+    ["I'll barked", "relaxed (verb form)"],
+    // mal-rule
     ["barks the dog", "mal-rule (word order)"],
 ];
 for (const [s, note] of sentences) {
-    timing_row(`"${s}"`, measure(() => { analyze(g, s); }, 2_000));
+    timing_row(`"${s}"`, measure(() => { analyze(g, s); }, 300));
     console.log(`  ${" ".repeat(34)} -> ${analyze(g, s).verdict}  (${note})`);
 }
 
@@ -206,10 +215,12 @@ function workload(words: string[]): { text: string; cat: string }[] {
         const a = w(i++), b = w(i++);
         out.push({ text: `the ${a} barks`, cat: "grammatical" });
         out.push({ text: `the ${a} chased the ${b}`, cat: "grammatical" });
-        out.push({ text: `${a}s bark`, cat: "grammatical" });
+        out.push({ text: `the big ${a} barks`, cat: "grammatical (adjective)" });
+        out.push({ text: `the ${a} and the ${b} bark`, cat: "grammatical (coordination)" });
         out.push({ text: `barks the ${a}`, cat: "mal-rule" });
         out.push({ text: `the ${a} bark`, cat: "relaxed (S-V agreement)" });
         out.push({ text: `${a} barks`, cat: "relaxed (missing determiner)" });
+        out.push({ text: `the ${a} and the ${b} barks`, cat: "relaxed (coordination)" });
     }
 
     return out;

@@ -221,19 +221,21 @@ is rejected when the grammar loads instead of silently becoming a feature value 
 
 ## Performance
 
-The engine is designed so ordinary grammatical analysis stays cheap. A heavier benchmark with a 10k-word imported lexicon exposed an accidental scaling cliff in lexical decoding: diagnostic recovery repeatedly re-analyzed generated repair candidates, and each analysis scanned the full root list.
+The engine is designed so ordinary grammatical analysis stays cheap. A heavier benchmark with a 10k-word imported lexicon exposed an accidental scaling cliff in lexical decoding: diagnostic recovery repeatedly re-analyzed generated repair candidates, and each analysis scanned the full root list making morphological analysis `O(R)` in the number of roots.
 
-Indexing roots by surface prefix removed that `O(lexicon size)` lookup from the hot path.
+Indexing roots by surface prefix (and the repair candidates by category) removed that `O(lexicon size)` lookup, dropping overall relaxed p95 on that benchmark from 77 ms to ~17 ms.
 
-| Input class | original p95 | + root index | + fix index |
+The grammar has since grown well beyond subject–verb agreement (adjectives, comparison, coordination, adverbs, the auxiliary system). Re-running the benchmark on the current fragment confirms the cliff stays closed, and a 10k-word lexicon leaves the relaxed numbers essentially unchanged, so analysis is now independent of lexicon size and shows that the remaining cost is diagnostic recovery, bounded by fix-candidate re-parsing rather than by vocabulary:
+
+| Input class | p50 | p95 | max |
 |---|---:|---:|---:|
-| grammatical | 4.64 ms | 1.29 ms | 1.43 ms |
-| mal-rule | 8.94 ms | 2.63 ms | 2.59 ms |
-| relaxed S–V agreement | 44.3 ms | 25.8 ms | 7.22 ms |
-| relaxed missing determiner | 75.1 ms | 33.4 ms | 15.5 ms |
-| overall p95 | 77 ms | 34 ms | 16.7 ms |
+| grammatical | 4.1 ms | 5.1 ms | 5.3 ms |
+| mal-rule | 6.0 ms | 7.4 ms | 7.4 ms |
+| relaxed (subject–verb agreement) | 27.1 ms | 39.2 ms | 39.2 ms |
+| relaxed (missing determiner) | 34.2 ms | 90.9 ms | 90.9 ms |
+| relaxed (coordination) | 50.7 ms | 88.0 ms | 88.0 ms |
 
-The lesson: the formal architecture can be sound while one local implementation choice introduces accidental complexity. Benchmarks made that visible.
+Grammatical analysis stays in the low single-digit milliseconds; only the relaxed path, which generates and re-parses repair candidates, is expensive.
 
 ---
 
