@@ -1,3 +1,5 @@
+![gram.en banner image](./gramen.png)
+
 # gram.en
 
 **gram.en** is an explainable grammatical analysis engine for natural language.
