@@ -1,0 +1,31 @@
+# Clitics and the auxiliaries/copulas they attach to (%include'd from en.gram).
+#
+# The tokenizer splits contractions (don't -> do + n't, I'm -> I + 'm), so the
+# clitic forms below need lexical entries -- otherwise the split pieces fail to
+# analyse. `vagr` is the present-tense agreement value (3sg vs everything-else,
+# n3sg); modal-like auxiliaries carry none, so they agree with any subject.
+
+# Negation clitic. Attaches after a copula or auxiliary (isn't, don't, won't).
+n't : Neg  <lemma>=not
+
+# Copula clitics -- forms of "be" that predicate something of the subject.
+'m  : Cop  <vagr>=n3sg  <lemma>=be     # I'm
+'re : Cop  <vagr>=n3sg  <lemma>=be     # we're / you're / they're
+'s  : Cop  <vagr>=3sg   <lemma>=be     # he's a dog        ('s as "is")
+
+# Full copula forms, needed because isn't/aren't split to is/are + n't.
+is  : Cop  <vagr>=3sg   <lemma>=be
+am  : Cop  <vagr>=n3sg  <lemma>=be
+are : Cop  <vagr>=n3sg  <lemma>=be
+
+# Auxiliary clitics. ''s and 'd are genuinely ambiguous, so each gets the
+# entries it can stand for; the parser keeps whichever analysis yields a parse.
+'ve : Aux  <vagr>=n3sg  <lemma>=have   # I've liked ...        (perfect "have")
+'s  : Aux  <vagr>=3sg   <lemma>=have   # he's liked ...        ('s as "has")
+'ll : Aux               <lemma>=will   # I'll bark             (modal "will")
+'d  : Aux               <lemma>=would  # I'd bark              ('d as "would")
+'d  : Aux               <lemma>=had    # I'd liked ...         ('d as "had")
+
+# Do-support auxiliaries (don't / doesn't split to do / does + n't).
+do   : Aux  <vagr>=n3sg  <lemma>=do
+does : Aux  <vagr>=3sg   <lemma>=do

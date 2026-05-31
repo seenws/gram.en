@@ -1,0 +1,67 @@
+# Grammar rules (%include'd from en.gram)
+
+S -> NP VP
+    <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
+    <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
+
+NP -> Det N
+    <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
+    <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+NP -> N
+    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
+    <NP num>  = <N num>
+    <NP pers> = <N pers>
+    <NP vagr> = <N vagr>
+
+NP -> Pron
+    <NP num>  = <Pron num>
+    <NP pers> = <Pron pers>
+    <NP case> = <Pron case>
+    <NP vagr> = <Pron vagr>
+
+VP -> V
+    <VP vagr> = <V vagr>
+
+VP -> V NP
+    <VP vagr> = <V vagr>
+    <NP case> = acc         ! "the object must be an accusative pronoun"  fix: accusative-pronoun
+# A Det-N NP sets no `case`, so it stays open and fills subject or object
+# position freely; only pronouns can clash on case.
+
+
+# Copula predication (he's a dog, I'm a dog, they're dogs) and its negation
+# (he isn't a dog). Agreement is carried by the copula.
+VP -> Cop NP
+    <VP vagr> = <Cop vagr>
+VP -> Cop Neg NP
+    <VP vagr> = <Cop vagr>
+
+# Auxiliaries take a verb phrase: I'll bark, I've liked the dog, I don't bark.
+# An auxiliary phrase is itself a VP (VP -> AuxP), so it satisfies S -> NP VP.
+# Agreement lives on the auxiliary; the inner verb's form is not constrained
+# (there's no finite/nonfinite split yet, so e.g. "I'll barked" is under-rejected).
+AuxP -> Aux VP
+    <AuxP vagr> = <Aux vagr>
+AuxP -> Aux Neg VP
+    <AuxP vagr> = <Aux vagr>
+VP -> AuxP
+    <VP vagr> = <AuxP vagr>
+
+
+PP -> P NP
+    <NP case> = acc         ! "the object of a preposition must be accusative"  fix: accusative-pronoun
+
+# The mother shares its symbol with the head daughter, so apply_equations' env
+# (keyed by category symbol) makes the mother inherit the head daughter's feature
+# structure automatically -- correct head percolation with no equations needed.
+NP -> NP PP
+VP -> VP PP
+
+
+%mal S -> V NP
+    *ERR "word order: English clauses are subject-verb-object; the verb appears before its subject"
+    *FIX reorder to "<NP> <V>"        # "barks the dog" -> "the dog barks"

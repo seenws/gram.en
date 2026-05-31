@@ -1,7 +1,8 @@
 import { type grammar, type lex_entry } from "./grammar.ts";
-import { get_path, unify } from "./featstruct.ts";
+import { get_path, unify, show_fs } from "./featstruct.ts";
 import {
     type tree,
+    type tracer,
     type violation,
     build_lex_items,
     make_ctx,
@@ -31,13 +32,27 @@ export type analysis = {
     unknown_words: string[];
 };
 
-export function analyze(g: grammar, sentence: string): analysis {
+export type analyze_options = { trace?: tracer };
+
+export function analyze(g: grammar, sentence: string, opts: analyze_options = {}): analysis {
     const spanned = tokenize_spans(sentence);
     const tokens = spanned.map((t) => t.text);
     const char_span = (span: [number, number]): [number, number] =>
         span[1] > span[0] && span[1] <= spanned.length
             ? [spanned[span[0]].start, spanned[span[1] - 1].end]
             : [0, sentence.length];
+
+    const trace = opts.trace;
+
+    if (trace) {
+        trace(`tokens: ${tokens.map((t, i) => `${i}:"${t}"`).join("  ") || "(none)"}`);
+        trace("=== morphology ===");
+        tokens.forEach((t, i) => {
+            const a = morph_analyze(g, t).map((e) => `${e.cat}${show_fs(e.feats)}${e.morph_err ? " *ERR" : ""}`);
+            trace(`  [${i}] "${t}" → ${a.join("  ") || "∅ (unknown word)"}`);
+        });
+        trace("=== earley parse (strict) ===");
+    }
 
     const unknown = tokens.filter((t) => morph_analyze(g, t).length === 0);
 
@@ -47,7 +62,7 @@ export function analyze(g: grammar, sentence: string): analysis {
 
     const n = tokens.length;
     const lex = build_lex_items(g, tokens);
-    const strict = full_parses(make_ctx(g, lex, false), n);
+    const strict = full_parses(make_ctx(g, lex, false, trace), n);
 
     // strict parses can now carry leaf-level violations from error-tagged
     // morphology (e.g. *childs). zero-violation strict → grammatical; strict
@@ -136,7 +151,9 @@ function dedupe(vs: violation[]): violation[] {
     return out;
 }
 
-function entries(g: grammar): lex_entry[] {
+// Every surface form the grammar can produce -- explicit lexicon entries plus
+// each (root, paradigm-entry) expansion -- as the candidate pool for fixes.
+function build_entries(g: grammar): lex_entry[] {
     const out: lex_entry[] = [...g.lexicon.values()].flat();
 
     for (const r of g.morph.roots) {
@@ -164,6 +181,43 @@ function feat_of(e: lex_entry, feat: string): string | null {
     const v = get_path(e.feats, [feat]);
 
     return v && v.kind === "atom" ? v.val : null;
+}
+
+// Fix generation looks up replacement forms by category, and sometimes by
+// (category, lemma). Building and scanning the whole entry list per lookup made
+// fix generation O(lexicon size); we instead build these indexes once per
+// grammar (immutable after parsing) and reuse them across every fix and every
+// re-parsed candidate. See the benchmark's "relaxed" rows.
+type fix_index = {
+    by_cat: Map<string, lex_entry[]>;
+    by_cat_lemma: Map<string, lex_entry[]>; // key: `${cat}\t${lemma ?? ""}`
+};
+
+const fix_index_cache = new WeakMap<grammar, fix_index>();
+
+function fix_index_of(g: grammar): fix_index {
+    let idx = fix_index_cache.get(g);
+
+    if (idx === undefined) {
+        const by_cat = new Map<string, lex_entry[]>();
+        const by_cat_lemma = new Map<string, lex_entry[]>();
+        const push = (m: Map<string, lex_entry[]>, k: string, e: lex_entry): void => {
+            const bucket = m.get(k);
+
+            if (bucket) bucket.push(e);
+            else m.set(k, [e]);
+        };
+
+        for (const e of build_entries(g)) {
+            push(by_cat, e.cat, e);
+            push(by_cat_lemma, `${e.cat}\t${feat_of(e, "lemma") ?? ""}`, e);
+        }
+
+        idx = { by_cat, by_cat_lemma };
+        fix_index_cache.set(g, idx);
+    }
+
+    return idx;
 }
 
 function find_leaf(t: tree, cat: string): { pos: number; lemma: string | null; form: string } | null {
@@ -199,10 +253,14 @@ function generate_fixes(g: grammar, tokens: string[], t: tree, v: violation, bas
 }
 
 function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v: violation): string[][] {
+    const idx = fix_index_of(g);
+    const of_cat = (cat: string): lex_entry[] => idx.by_cat.get(cat) ?? [];
+    const of_cat_lemma = (cat: string, lemma: string | null): lex_entry[] =>
+        idx.by_cat_lemma.get(`${cat}\t${lemma ?? ""}`) ?? [];
     const sub = (pos: number, form: string): string[] => tokens.map((tok, i) => (i === pos ? form : tok));
     const same_lemma = (cat: string, leaf: { pos: number; lemma: string | null }): string[][] =>
-        entries(g)
-            .filter((e) => e.cat === cat && feat_of(e, "lemma") === leaf.lemma && e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
+        of_cat_lemma(cat, leaf.lemma)
+            .filter((e) => e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
             .map((e) => sub(leaf.pos, e.form));
 
     // morph mal-rules carry the correct surface in the strategy itself; the
@@ -230,8 +288,8 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
 
             if (!leaf) return [];
 
-            return entries(g)
-                .filter((e) => e.cat === "Det" && e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
+            return of_cat("Det")
+                .filter((e) => e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
                 .map((e) => sub(leaf.pos, e.form));
         }
         case "add-determiner": {
@@ -239,8 +297,7 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
 
             if (!leaf) return [];
 
-            return entries(g)
-                .filter((e) => e.cat === "Det")
+            return of_cat("Det")
                 .map((e) => [...tokens.slice(0, leaf.pos), e.form, ...tokens.slice(leaf.pos)]);
         }
         case "nominative-pronoun":
@@ -250,8 +307,8 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
 
             if (!leaf) return [];
 
-            return entries(g)
-                .filter((e) => e.cat === "Pron" && feat_of(e, "lemma") === leaf.lemma && feat_of(e, "case") === want)
+            return of_cat_lemma("Pron", leaf.lemma)
+                .filter((e) => feat_of(e, "case") === want)
                 .map((e) => sub(leaf.pos, e.form));
         }
         default:

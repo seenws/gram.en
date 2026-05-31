@@ -122,6 +122,33 @@ test("parse_rule: context missing '_' is an error", () => {
 });
 
 
+// -- character classes -------------------------------------------------------
+
+test("parse_rule: a class name stays a single symbol (not split into chars)", () => {
+    const classes = new Map([["Cons", ["b", "c", "d"]]]);
+
+    assert.deepEqual(
+        parse_rule("e:0 => Cons _", classes),
+        { in: ["e"], out: [], left: ["Cons"], right: [] },
+    );
+    // without the class table, "Cons" would tokenize into c,o,n,s
+    assert.deepEqual(parse_rule("e:0 => Cons _").left, ["C", "o", "n", "s"]);
+});
+
+test("compile_rule: a class context matches any one member", () => {
+    const classes = new Map([["Cons", ["b", "c", "d"]]]);
+    const rule = parse_rule("e:i => Cons _", classes);
+    const f = compile_rule(SIGMA, rule, classes);
+    const down = (s: string) => apply_down(f, tokenize_symbols(s)).map(show_symbols).sort();
+
+    // 'be' / 'de': e follows a consonant -> optionally rewritten
+    assert.deepEqual(down("be"), ["be", "bi"]);
+    assert.deepEqual(down("de"), ["de", "di"]);
+    // 'ae': e follows a vowel (not in Cons) -> only identity
+    assert.deepEqual(down("ae"), ["ae"]);
+});
+
+
 // -- cascade -----------------------------------------------------------------
 
 test("compile_cascade: empty cascade is identity (input passes through)", () => {

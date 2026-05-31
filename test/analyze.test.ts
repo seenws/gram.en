@@ -8,7 +8,9 @@ import { analyze } from "../src/analyze.ts";
 import { build_lex_items } from "../src/parser.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const g = parse_grammar(readFileSync(join(here, "..", "languages", "en.gram"), "utf8"));
+const gram_dir = join(here, "..", "languages");
+const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
+const g = parse_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), { resolve });
 
 // A self-contained grammar that exercises the morphology path: "puppy" and
 // "puppies" are reachable only through the N-reg-y paradigm, not via an
@@ -48,6 +50,64 @@ test("unknown word is reported, not called ungrammatical", () => {
     const a = analyze(g, "glorp barks");
     assert.equal(a.verdict, "unknown-word");
     assert.deepEqual(a.unknown_words, ["glorp"]);
+});
+
+// Clitics (contractions) -----------------------------------------------------
+
+test("contracted copula and auxiliary clitics parse", () => {
+    for (const s of [
+        "he's a dog",        // 's = is (copula)
+        "I'm a dog",         // 'm = am
+        "they're dogs",      // 're = are
+        "I don't bark",      // do + n't
+        "he doesn't bark",   // does + n't
+        "I'll bark",         // 'll = will (modal)
+        "he'll bark",        // modal: no agreement, so 3sg subject is fine
+        "I've liked the dog", // 've = have (perfect)
+        "he's liked the dog", // 's = has
+        "I'd bark",          // 'd = would
+    ]) {
+        assert.equal(analyze(g, s).verdict, "grammatical", `expected grammatical: ${s}`);
+    }
+});
+
+// Trace / debug mode ---------------------------------------------------------
+
+test("trace mode emits morphology and chart lines without changing the verdict", () => {
+    const lines: string[] = [];
+    const a = analyze(g, "the dog barks", { trace: (l) => lines.push(l) });
+
+    // verdict is unchanged by tracing
+    assert.equal(a.verdict, "grammatical");
+
+    const dump = lines.join("\n");
+    assert.match(dump, /=== morphology ===/);
+    assert.match(dump, /\[0\] "the"/);            // per-token morphology
+    assert.match(dump, /predict <NP>/);            // a predict step
+    assert.match(dump, /scan <Pron> ✗/);           // a scan miss is flagged
+    assert.match(dump, /complete <S>/);            // the start symbol completes
+    assert.match(dump, /=== final chart ===|final chart/); // chart dump header
+});
+
+test("trace flags where scanning dead-ends on an uncovered sentence", () => {
+    const lines: string[] = [];
+    analyze(g, "the dog the dog", { trace: (l) => lines.push(l) });
+    // no verb after the subject NP -> the VP scans dead-end
+    assert.ok(lines.some((l) => /scan <V> ✗/.test(l)));
+});
+
+test("not passing a tracer leaves analysis silent (no trace coupling)", () => {
+    // a plain call must behave exactly as before tracing existed
+    assert.equal(analyze(g, "the dog barks").verdict, "grammatical");
+});
+
+test("clitic agreement and case errors are caught", () => {
+    // "I's" -- 's is 3sg, subject I is not
+    assert.equal(analyze(g, "I's a dog").verdict, "ungrammatical");
+    // "he don't" -- do is non-3sg, subject he is 3sg
+    assert.equal(analyze(g, "he don't bark").verdict, "ungrammatical");
+    // subject case still enforced through the auxiliary phrase
+    assert.equal(analyze(g, "me'll bark").verdict, "ungrammatical");
 });
 
 // Morphological mal-rules (Phase 8) -------------------------------------------

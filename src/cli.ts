@@ -49,13 +49,22 @@ function format_report(a: analysis): string {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_path = join(here, "..", "languages", "en.gram");
-const grammar = parse_grammar(readFileSync(gram_path, "utf8"));
-const sentence = process.argv.slice(2).join(" ").trim();
+const gram_dir = join(here, "..", "languages");
+const gram_path = join(gram_dir, "en.gram");
+const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
+const grammar = parse_grammar(readFileSync(gram_path, "utf8"), { resolve, filename: "en.gram" });
+
+const args = process.argv.slice(2);
+const trace_on = args.includes("--trace");
+const sentence = args.filter((a) => a !== "--trace").join(" ").trim();
 
 if (!sentence) {
-    console.error('usage: node --experimental-strip-types src/cli.ts "the dog bark"');
+    console.error('usage: node --experimental-strip-types src/cli.ts [--trace] "the dog bark"');
     process.exit(1);
 }
 
-console.log(format_report(analyze(grammar, sentence)));
+// In --trace mode, narrate the morphology and the Earley chart to stderr so the
+// verdict on stdout stays clean and pipeable.
+const trace = trace_on ? (line: string) => console.error(line) : undefined;
+
+console.log(format_report(analyze(grammar, sentence, { trace })));

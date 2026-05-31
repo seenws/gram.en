@@ -16,10 +16,16 @@ export type violation = {
 export type lex_item = { cat: string; feats: feature_struct; form: string; morph_err?: { message: string; fix: string } };
 export type edge = { start: number; end: number; tree: tree; violations: violation[] };
 
+// Optional trace sink. When present, chart_parse narrates predict/scan/complete
+// steps (flagging where prediction or scanning dead-ends) and dumps the final
+// chart. Off by default; threaded in only by the CLI's --trace mode.
+export type tracer = (line: string) => void;
+
 export type ctx = {
     g: grammar;
     lex: lex_item[][];
     relax: boolean;
+    trace?: tracer;
 };
 
 export function build_lex_items(g: grammar, tokens: string[]): lex_item[][] {
@@ -30,12 +36,12 @@ export function build_lex_items(g: grammar, tokens: string[]): lex_item[][] {
     });
 }
 
-export function make_ctx(g: grammar, lex: lex_item[][], relax: boolean): ctx {
+export function make_ctx(g: grammar, lex: lex_item[][], relax: boolean, trace?: tracer): ctx {
     for (const r of g.rules) {
         if (r.rhs.length === 0) throw new Error(`epsilon rule not supported: ${r.name}`);
     }
 
-    return { g, lex, relax };
+    return { g, lex, relax, trace };
 }
 
 // Earley chart parser.
@@ -69,6 +75,14 @@ function item_key(it: item): string {
 }
 
 type column = { items: Map<string, item>; queue: item[] };
+
+// Dotted-rule rendering for trace dumps, e.g. "S → NP · VP @0 !1".
+function show_item(it: item): string {
+    const rhs = it.rule.rhs.slice();
+    rhs.splice(it.dot, 0, "·");
+
+    return `${it.rule.lhs} → ${rhs.join(" ")} @${it.origin}${it.violations.length ? ` !${it.violations.length}` : ""}`;
+}
 
 function rules_by_lhs(rules: rule[]): Map<string, rule[]> {
     const m = new Map<string, rule[]>();
@@ -123,9 +137,18 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
                 if (c.g.nonterminals.has(sym)) {
                     // PREDICT: dot-0 items have no children, so the prediction dedups to
                     // one per (rule, column) and left recursion cannot loop.
+                    if (c.trace) {
+                        const k = (by_lhs.get(sym) ?? []).length;
+                        c.trace(k > 0
+                            ? `col ${i}: predict <${sym}> (${k} rule${k > 1 ? "s" : ""})  for ${show_item(it)}`
+                            : `col ${i}: predict <${sym}> — PREDICTION DEAD-ENDS (no rules)  for ${show_item(it)}`);
+                    }
+
                     seed(sym, i);
                 } else if (i < c.lex.length) {
                     // SCAN
+                    let scanned = 0;
+
                     for (const li of c.lex[i]) {
                         if (li.cat !== sym) continue;
 
@@ -149,13 +172,25 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
                         };
 
                         add(i + 1, advance(it, leaf));
+                        scanned++;
+                    }
+
+                    if (c.trace) {
+                        c.trace(scanned > 0
+                            ? `col ${i}: scan <${sym}> ✓ (${scanned})`
+                            : `col ${i}: scan <${sym}> ✗ — tokens here analyse as [${(c.lex[i] ?? []).map((l) => l.cat).join(", ") || "—"}]`);
                     }
                 }
             } else {
                 // COMPLETE: run the rule's feature equations and propagate to waiters.
                 const me = mother_edge(c, it);
 
-                if (me === null) continue; // strict hard-fail
+                if (me === null) {
+                    c.trace?.(`col ${i}: complete <${it.rule.lhs}> [${it.rule.name}] BLOCKED by feature clash`);
+                    continue; // strict hard-fail
+                }
+
+                c.trace?.(`col ${i}: complete <${it.rule.lhs}> [${it.rule.name}] spanning ${it.origin}–${i}`);
 
                 it.edge = me;
 
@@ -167,6 +202,15 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
                     }
                 }
             }
+        }
+    }
+
+    if (c.trace) {
+        c.trace(`=== final chart (start <${start}>, ${n} token${n === 1 ? "" : "s"}) ===`);
+
+        for (let col = 0; col <= n; col++) {
+            c.trace(`column ${col}:`);
+            for (const it of cols[col].items.values()) c.trace(`    ${show_item(it)}`);
         }
     }
 

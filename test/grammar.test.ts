@@ -8,10 +8,12 @@ import { morph_analyze } from "../src/morph.ts";
 import { get_path } from "../src/featstruct.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const g = parse_grammar(readFileSync(join(here, "..", "languages", "en.gram"), "utf8"));
+const gram_dir = join(here, "..", "languages");
+const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
+const g = parse_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), { resolve });
 
 test("closed-class forms load as explicit lexicon entries", () => {
-    for (const w of ["the", "a", "these", "i", "me", "chased"]) {
+    for (const w of ["the", "a", "these", "i", "me"]) {
         assert.ok(g.lexicon.has(w), `missing lexicon entry: ${w}`);
     }
 });
@@ -21,6 +23,22 @@ test("open-class forms come from paradigms (not explicit lexicon)", () => {
         assert.equal(g.lexicon.has(w), false, `${w} should be paradigm-derived, not explicit`);
         assert.ok(morph_analyze(g, w).length > 0, `${w} should still be analysable`);
     }
+});
+
+test("regular past tense is productive (no explicit entry needed)", () => {
+    for (const w of ["chased", "liked", "barked", "tried"]) {
+        assert.equal(g.lexicon.has(w), false, `${w} should be paradigm-derived, not explicit`);
+
+        const past = morph_analyze(g, w).find((e) => e.cat === "V");
+        assert.ok(past, `${w} should analyse as a verb`);
+        assert.deepEqual(get_path(past!.feats, ["tense"]), { kind: "atom", val: "past" });
+    }
+});
+
+test("the %rule e-deletion recovers the lemma through the spelling change", () => {
+    const [chased] = morph_analyze(g, "chased").filter((e) => e.cat === "V");
+    assert.equal(chased.form, "chased");
+    assert.deepEqual(get_path(chased.feats, ["lemma"]), { kind: "atom", val: "chase" });
 });
 
 test("a paradigm-derived noun carries its features", () => {
@@ -80,4 +98,63 @@ NP -> Det N
 
     // the syntactic rule before the %lex blocks is still parsed
     assert.ok(h.rules.some((r) => r.name === "NP -> Det N"));
+});
+
+test("en.gram declares its features", () => {
+    assert.deepEqual(g.features.get("num"), new Set(["sg", "pl"]));
+    assert.equal(g.features.get("lemma"), null); // open feature
+});
+
+test("en.gram declares character classes", () => {
+    assert.deepEqual(g.classes.get("Vowel"), ["a", "e", "i", "o", "u"]);
+    assert.ok(g.classes.get("Cons")?.includes("b"));
+});
+
+test("%class parses members split on '|'", () => {
+    const h = parse_grammar(`%class Vowel : a | e | i | o | u
+S -> NP`);
+    assert.deepEqual(h.classes.get("Vowel"), ["a", "e", "i", "o", "u"]);
+});
+
+test("a malformed %class fails at load", () => {
+    assert.throws(() => parse_grammar("%class Vowel"), /%class needs/);
+});
+
+test("a value typo in a declared feature fails at load", () => {
+    const text = `%feature num : sg | pl
+dog : N <num>=sgular`;
+    assert.throws(() => parse_grammar(text), /feature 'num' has undeclared value 'sgular'/);
+});
+
+test("an undeclared feature name fails at load", () => {
+    const text = `%feature num : sg | pl
+dog : N <nmu>=sg`;
+    assert.throws(() => parse_grammar(text), /unknown feature 'nmu'/);
+});
+
+test("a bad value in a rule equation fails at load", () => {
+    const text = `%feature case : nom | acc
+S -> NP
+    <NP case> = nomm`;
+    assert.throws(() => parse_grammar(text), /feature 'case' has undeclared value 'nomm'/);
+});
+
+test("a typo in a paradigm entry fails at load", () => {
+    const text = `%feature num : sg | pl
+%lex Root
+    dog : N-reg <lemma>=dog
+%lex N-reg : N
+    +N+Pl : s <num>=plural`;
+    assert.throws(() => parse_grammar(text), /feature 'num' has undeclared value 'plural'/);
+});
+
+test("an open feature accepts any value", () => {
+    const text = `%feature lemma : *
+dog : N <lemma>=anything-goes`;
+    assert.doesNotThrow(() => parse_grammar(text));
+});
+
+test("a grammar that declares no features opts out of validation", () => {
+    // no %feature block -> the typo loads silently (it just never unifies)
+    assert.doesNotThrow(() => parse_grammar(`dog : N <num>=sgular`));
 });

@@ -27,6 +27,12 @@ export type rule_spec = {
     right?: string[];
 };
 
+// Named character classes (e.g. Vowel -> a | e | i | o | u). A class name that
+// appears at a context slot matches any one of its members. Declared in the
+// grammar with %class and threaded into parse_rule/compile_rule.
+export type char_classes = ReadonlyMap<string, readonly string[]>;
+const NO_CLASSES: char_classes = new Map();
+
 
 export function identity_sym(sigma: readonly string[]): fst {
     return union_many(sigma.map(symbol));
@@ -37,11 +43,16 @@ export function identity_star(sigma: readonly string[]): fst {
     return kleene(identity_sym(sigma));
 }
 
-// Identity over a fixed literal symbol sequence.
-function literal(syms: readonly string[]): fst {
+// Identity over a context symbol sequence. A symbol that names a character
+// class expands to "any one member" (a union); everything else is itself.
+function context(syms: readonly string[], classes: char_classes): fst {
     if (syms.length === 0) return eps();
 
-    return concat_many(syms.map(symbol));
+    return concat_many(syms.map((s) => {
+        const members = classes.get(s);
+
+        return members ? union_many(members.map(symbol)) : symbol(s);
+    }));
 }
 
 // The rewrite kernel: emit `out` for `inp`. The shorter side is EPS-padded
@@ -66,10 +77,10 @@ function rewrite(inp: readonly string[], out: readonly string[]): fst {
 }
 
 
-export function compile_rule(sigma: readonly string[], spec: rule_spec): fst {
+export function compile_rule(sigma: readonly string[], spec: rule_spec, classes: char_classes = NO_CLASSES): fst {
     const left = spec.left ?? [];
     const right = spec.right ?? [];
-    const match = concat_many([literal(left), rewrite(spec.in, spec.out), literal(right)]);
+    const match = concat_many([context(left, classes), rewrite(spec.in, spec.out), context(right, classes)]);
 
     return epsilon_eliminate(kleene(union(identity_sym(sigma), match)));
 }
@@ -81,8 +92,8 @@ export function compile_rule(sigma: readonly string[], spec: rule_spec): fst {
 // (and the lexicon, applied last, filters out the overgenerated candidates).
 export type cascade = fst[];
 
-export function compile_cascade(sigma: readonly string[], specs: readonly rule_spec[]): cascade {
-    return specs.map((s) => compile_rule(sigma, s));
+export function compile_cascade(sigma: readonly string[], specs: readonly rule_spec[], classes: char_classes = NO_CLASSES): cascade {
+    return specs.map((s) => compile_rule(sigma, s, classes));
 }
 
 function dedupe_seqs(rs: string[][]): string[][] {
@@ -147,19 +158,21 @@ export function apply_cascade_up(cs: cascade, input: string | string[]): string[
 // Each pattern is tokenised with tokenize_symbols, so `+s` is one symbol
 // and `es` is two. The literal "0" (zero) is a conventional name for EPS
 // on either side of the rewrite, so `e:0` reads as "delete e".
-function parse_pattern(s: string): string[] {
+function parse_pattern(s: string, classes: char_classes): string[] {
     if (s === "0" || s === "") return [];
+    // A class name is a single opaque symbol; don't split it into characters.
+    if (classes.has(s)) return [s];
 
     return tokenize_symbols(s);
 }
 
-function parse_context(s: string): string[] {
+function parse_context(s: string, classes: char_classes): string[] {
     if (!s) return [];
 
-    return s.split(/\s+/).flatMap(parse_pattern);
+    return s.split(/\s+/).flatMap((t) => parse_pattern(t, classes));
 }
 
-export function parse_rule(text: string): rule_spec {
+export function parse_rule(text: string, classes: char_classes = NO_CLASSES): rule_spec {
     const body = text.trim();
     const ci = body.indexOf("=>");
     const rewrite_str = (ci >= 0 ? body.slice(0, ci) : body).trim();
@@ -168,8 +181,8 @@ export function parse_rule(text: string): rule_spec {
 
     if (ri < 0) throw new Error(`rule: missing ":" in rewrite: ${rewrite_str}`);
 
-    const inp = parse_pattern(rewrite_str.slice(0, ri).trim());
-    const out = parse_pattern(rewrite_str.slice(ri + 1).trim());
+    const inp = parse_pattern(rewrite_str.slice(0, ri).trim(), classes);
+    const out = parse_pattern(rewrite_str.slice(ri + 1).trim(), classes);
 
     let left: string[] = [];
     let right: string[] = [];
@@ -179,8 +192,8 @@ export function parse_rule(text: string): rule_spec {
 
         if (ui < 0) throw new Error(`rule: context missing "_": ${context_str}`);
 
-        left = parse_context(context_str.slice(0, ui).trim());
-        right = parse_context(context_str.slice(ui + 1).trim());
+        left = parse_context(context_str.slice(0, ui).trim(), classes);
+        right = parse_context(context_str.slice(ui + 1).trim(), classes);
     }
 
     return { in: inp, out, left, right };

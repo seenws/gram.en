@@ -1,3 +1,9 @@
+# English grammar -- manifest.
+#
+# This file wires together the pieces with %include / %import. The actual
+# content lives in the sub-files so each part (closed-class lexicon, open-class
+# morphology, bulk noun lexicon, syntax) can grow independently.
+#
 # Syntax
 # ------
 #   lexicon entry : form : CAT  <path>=value ...
@@ -8,6 +14,8 @@
 #                   reported (with the constituents in the equation highlighted)
 #                   when relaxing exactly that constraint rescues the parse.
 #   mal-rule      : %mal LHS -> RHS ...   with *ERR "message" and *FIX ...
+#   declaration   : %feature <name> : v1 | v2 | ...   (or `: *` for an open feature)
+#   file directive: %include <file.gram>   %import <file.tsv>
 #
 # Feature values are atomic for this first slice (no disjunction/sets).
 # An unset feature unifies with anything (underspecification).
@@ -25,113 +33,19 @@
 # `vagr`. Agreement is then plain equality. Revisit when a disjunctive value
 # type exists.
 
+# Feature declarations. Declaring features turns on load-time validation: any
+# atomic value that isn't listed here (a typo like <num>=sgular) fails at load
+# instead of silently never unifying. `lemma` is open (any value).
+%feature num     : sg | pl
+%feature pers    : 1 | 2 | 3
+%feature case    : nom | acc
+%feature vagr    : 3sg | n3sg
+%feature initial : cons | vowel
+%feature tense   : pres | past | bare
+%feature lemma   : *
 
-# Lexicon
-#
-# Closed-class items (determiners, pronouns, prepositions) stay explicit:
-# they're irregular as a class and morphology has nothing to add.
-# Open-class items (nouns, verbs) are derived from paradigms below.
-
-# Determiners            ( `the` is unmarked for number; a/an mark the sound of
-#                          the following noun: consonant vs vowel )
-the   : Det
-a     : Det  <num>=sg  <initial>=cons
-an    : Det  <num>=sg  <initial>=vowel
-this  : Det  <num>=sg
-these : Det  <num>=pl
-
-# Pronouns       num       pers      case        vagr         lemma
-I      : Pron  <num>=sg  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1sg
-me     : Pron  <num>=sg  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1sg
-he     : Pron  <num>=sg  <pers>=3  <case>=nom  <vagr>=3sg   <lemma>=pron.3sg.m
-him    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.m
-they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
-them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
-
-# Prepositions
-to   : P
-with : P
-on   : P
-
-# Past-tense verbs remain explicit until a past-tense paradigm with
-# stem-final-e handling lands; English regular past is "+ed" after a
-# consonant ("barked") but "+d" after a silent e ("chased", "liked").
-chased : V  <lemma>=chase
-
-# Open-class morphology: N-reg covers regular consonant-initial nouns
-# (dog/dogs, cat/cats, bark/barks-as-noun) and V-reg covers regular
-# present-tense verbs in their bare and 3sg forms (bark/barks, like/likes).
-# `bark` appears under both roots, so morph_analyze returns both N and V
-# analyses for the surface "bark" (the ambiguity from §13 of the notes).
-%lex Root
-    dog   : N-reg            <lemma>=dog   <initial>=cons
-    cat   : N-reg            <lemma>=cat   <initial>=cons
-    bark  : N-reg            <lemma>=bark  <initial>=cons
-    bark  : V-reg            <lemma>=bark
-    like  : V-reg            <lemma>=like
-    child : N-irreg-children <lemma>=child <initial>=cons
-
-%lex N-reg : N
-    +N+Sg :    <num>=sg <pers>=3 <vagr>=3sg
-    +N+Pl : s  <num>=pl <pers>=3 <vagr>=n3sg
-
-%lex V-reg : V
-    +V+Pres+Bare :    <vagr>=n3sg
-    +V+Pres+3Sg  : s  <vagr>=3sg
-
-# The second +N+Pl entry recognises the anticipated wrong plural "*childs"
-# (the FST emits "child+N+Pl" for both surfaces; morph_analyze narrows by
-# the actual surface and copies *ERR/*FIX onto the wrong-surface analysis).
-%lex N-irreg-children : N
-    +N+Sg :     <num>=sg <pers>=3 <vagr>=3sg
-    +N+Pl : ren <num>=pl <pers>=3 <vagr>=n3sg
-    +N+Pl : s   <num>=pl <pers>=3 <vagr>=n3sg  *ERR "irregular plural: 'children', not '*childs'"  *FIX children
-
-
-# Grammar rules
-S -> NP VP
-    <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
-    <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
-
-NP -> Det N
-    <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
-    <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
-    <NP num>  = <N num>
-    <NP pers> = <N pers>
-    <NP vagr> = <N vagr>
-
-NP -> N
-    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
-    <NP num>  = <N num>
-    <NP pers> = <N pers>
-    <NP vagr> = <N vagr>
-
-NP -> Pron
-    <NP num>  = <Pron num>
-    <NP pers> = <Pron pers>
-    <NP case> = <Pron case>
-    <NP vagr> = <Pron vagr>
-
-VP -> V
-    <VP vagr> = <V vagr>
-
-VP -> V NP
-    <VP vagr> = <V vagr>
-    <NP case> = acc         ! "the object must be an accusative pronoun"  fix: accusative-pronoun
-# A Det-N NP sets no `case`, so it stays open and fills subject or object
-# position freely; only pronouns can clash on case.
-
-
-PP -> P NP
-    <NP case> = acc         ! "the object of a preposition must be accusative"  fix: accusative-pronoun
-
-# The mother shares its symbol with the head daughter, so apply_equations' env
-# (keyed by category symbol) makes the mother inherit the head daughter's feature
-# structure automatically -- correct head percolation with no equations needed.
-NP -> NP PP
-VP -> VP PP
-
-
-%mal S -> V NP
-    *ERR "word order: English clauses are subject-verb-object; the verb appears before its subject"
-    *FIX reorder to "<NP> <V>"        # "barks the dog" -> "the dog barks"
+%include closed.gram
+%include clitics.gram
+%include morph.gram
+%import  lexicon.tsv
+%include syntax.gram

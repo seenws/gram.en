@@ -1,0 +1,4 @@
+# Open-class noun stems, bulk-loaded into %lex Root via `%import lexicon.tsv`.
+# Columns are TAB-separated:  <stem>  <paradigm>  [<feature>=value ...]
+dog	N-reg	<lemma>=dog <initial>=cons
+cat	N-reg	<lemma>=cat <initial>=cons

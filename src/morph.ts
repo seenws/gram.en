@@ -1,7 +1,8 @@
 // Morphology facade used by the parser and the analyzer
 
 import { type grammar, type lex_entry } from "./grammar.ts";
-import { apply_down } from "./fst.ts";
+import { apply_down, show_symbols } from "./fst.ts";
+import { apply_cascade_up } from "./morph_rules.ts";
 import { decode_lexical } from "./morph_lexc.ts";
 
 export function morph_analyze(g: grammar, surface: string): lex_entry[] {
@@ -14,19 +15,36 @@ export function morph_analyze(g: grammar, surface: string): lex_entry[] {
         const out: lex_entry[] = [];
         const seen = new Set<string>();
 
-        for (const tag_seq of apply_down(g.morph_fst, key)) {
-            for (const d of decode_lexical(g.morph, tag_seq)) {
-                // tag-shared paradigm entries (clean and *ERR/*FIX) decode to
-                // both analyses for any matching tag sequence; narrow by the
-                // actual surface so the error stays attached to its surface
-                if (d.form !== key) continue;
+        // Run the rewrite cascade upward to recover the underlying strings the
+        // lexicon recognises (e.g. "chased" -> "chaseed"). With no %rule the
+        // cascade is empty, so the only candidate is the surface itself and
+        // this reduces to the plain apply_down(fst, surface) lookup.
+        //
+        // The cascade always includes identity, so the raw underlying form
+        // ("chaseed") is also accepted as a candidate -- a known
+        // under-rejection that a morpheme-boundary symbol would close. It only
+        // ever fails to flag a non-word, never mis-flags a real one, so it's
+        // left as a documented trade-off rather than reworking the lexicon
+        // FST's surface-literal tape.
+        for (const cand of apply_cascade_up(g.morph_cascade, key)) {
+            const cand_str = show_symbols(cand);
 
-                const k = `${d.cat}|${d.form}|${tag_seq.join(" ")}|${d.error?.message ?? ""}`;
+            for (const tag_seq of apply_down(g.morph_fst, cand)) {
+                for (const d of decode_lexical(g.morph, tag_seq)) {
+                    // tag-shared paradigm entries (clean and *ERR/*FIX) decode to
+                    // both analyses; narrow by the underlying candidate that the
+                    // lexicon actually matched so the error stays on its surface.
+                    if (d.form !== cand_str) continue;
 
-                if (seen.has(k)) continue;
+                    const k = `${d.cat}|${tag_seq.join(" ")}|${d.error?.message ?? ""}`;
 
-                seen.add(k);
-                out.push({ form: d.form, cat: d.cat, feats: d.feats, morph_err: d.error });
+                    if (seen.has(k)) continue;
+
+                    seen.add(k);
+                    // The reported form is the true input surface, not the
+                    // underlying candidate the lexicon matched.
+                    out.push({ form: key, cat: d.cat, feats: d.feats, morph_err: d.error });
+                }
             }
         }
 

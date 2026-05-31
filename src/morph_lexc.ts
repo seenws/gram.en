@@ -218,38 +218,74 @@ export function compile_morph_fst(data: morph_data): fst {
 }
 
 
-// Given a lexical-side symbol sequence (the apply_down output), find every
-// (root, paradigm-entry) that explains it and return a decoded analysis.
-export function decode_lexical(data: morph_data, tag_seq: readonly string[]): decoded[] {
-    const out: decoded[] = [];
+// Roots grouped by their exact surface string, so decode_lexical can look up
+// the stem by prefix instead of scanning every root. Memoised per morph_data
+// (which is immutable after parsing) so the O(roots) build happens once, not
+// once per analysed token -- the previous per-token scan made morph_analyze
+// accidentally O(lexicon size).
+const root_index_cache = new WeakMap<morph_data, Map<string, root_entry[]>>();
 
-    for (const r of data.roots) {
-        const stem_chars = [...r.surface];
+function root_index(data: morph_data): Map<string, root_entry[]> {
+    let idx = root_index_cache.get(data);
 
-        if (tag_seq.length < stem_chars.length) continue;
+    if (idx === undefined) {
+        idx = new Map();
 
-        let ok = true;
+        for (const r of data.roots) {
+            const bucket = idx.get(r.surface);
 
-        for (let i = 0; i < stem_chars.length; i++) {
-            if (tag_seq[i] !== stem_chars[i]) { ok = false; break; }
+            if (bucket) bucket.push(r);
+            else idx.set(r.surface, [r]);
         }
 
-        if (!ok) continue;
+        root_index_cache.set(data, idx);
+    }
 
-        const rest = tag_seq.slice(stem_chars.length).join("");
-        const p = data.paradigms.get(r.paradigm);
+    return idx;
+}
 
-        if (!p) continue;
+// Given a lexical-side symbol sequence (the apply_down output), find every
+// (root, paradigm-entry) that explains it and return a decoded analysis.
+//
+// The upper tape is the stem's characters (one symbol each) followed by the
+// tag symbols, and a root is identified by its surface being a prefix of that
+// sequence. We walk the prefixes of tag_seq and look each one up in the root
+// index: the prefix is built by concatenating symbols (so multi-code-unit
+// characters stay consistent with how the trie emitted them), and any root
+// whose surface equals that prefix consumes exactly that many symbols, leaving
+// the remainder as the tag to match. This is O(stem length) lookups rather
+// than O(number of roots). Overlapping stems (e.g. "do" and "dog") are both
+// found, at their respective prefix lengths.
+export function decode_lexical(data: morph_data, tag_seq: readonly string[]): decoded[] {
+    const out: decoded[] = [];
+    const index = root_index(data);
 
-        for (const e of effective_entries(r, p)) {
-            if (e.tag !== rest) continue;
+    let prefix = "";
 
-            const merged = unify(r.feats, e.feats);
+    for (let len = 1; len <= tag_seq.length; len++) {
+        prefix += tag_seq[len - 1];
 
-            if (merged === null) continue;
+        const roots = index.get(prefix);
 
-            const lemma = lemma_of(merged, r.surface);
-            out.push({ lemma, cat: p.cat, feats: merged, form: r.surface + e.surface, error: e.error });
+        if (roots === undefined) continue;
+
+        const rest = tag_seq.slice(len).join("");
+
+        for (const r of roots) {
+            const p = data.paradigms.get(r.paradigm);
+
+            if (!p) continue;
+
+            for (const e of effective_entries(r, p)) {
+                if (e.tag !== rest) continue;
+
+                const merged = unify(r.feats, e.feats);
+
+                if (merged === null) continue;
+
+                const lemma = lemma_of(merged, r.surface);
+                out.push({ lemma, cat: p.cat, feats: merged, form: r.surface + e.surface, error: e.error });
+            }
         }
     }
 

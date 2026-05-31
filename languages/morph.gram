@@ -1,0 +1,50 @@
+# Open-class morphology (%include'd from en.gram)
+#
+# Character classes for rewrite-rule contexts (used by %rule).
+%class Vowel : a | e | i | o | u
+%class Cons  : b | c | d | f | g | h | j | k | l | m | n | p | q | r | s | t | v | w | x | y | z
+#
+# N-reg covers regular consonant-initial nouns (dog/dogs, cat/cats,
+# bark/barks-as-noun) and V-reg covers regular present-tense verbs in their
+# bare and 3sg forms (bark/barks, like/likes). `bark` appears under both roots,
+# so morph_analyze returns both N and V analyses for the surface "bark".
+#
+# The regular noun stems (dog, cat) live in lexicon.tsv and are pulled in with
+# `%import lexicon.tsv` from en.gram; the roots below are the ones that need to
+# sit next to a paradigm or an irregular paradigm.
+%lex Root
+    bark  : N-reg            <lemma>=bark  <initial>=cons
+    bark  : V-reg            <lemma>=bark
+    like  : V-reg            <lemma>=like
+    chase : V-reg            <lemma>=chase
+    try   : V-reg            <lemma>=try
+    child : N-irreg-children <lemma>=child <initial>=cons
+
+%lex N-reg : N
+    +N+Sg :    <num>=sg <pers>=3 <vagr>=3sg
+    +N+Pl : s  <num>=pl <pers>=3 <vagr>=n3sg
+
+%lex V-reg : V
+    +V+Pres+Bare :    <vagr>=n3sg
+    +V+Pres+3Sg  : s  <vagr>=3sg
+    +V+Past      : ed <tense>=past
+    # Past tense doesn't agree in English ("I/he/they barked"), so it carries no
+    # `vagr`; an unset feature unifies with any subject. The stored suffix is the
+    # underlying "ed"; the %rule spelling rules below realise the surface.
+
+# Spelling rules, applied in generation order (underlying -> surface) and run
+# backwards by morph_analyze to recover the underlying form during analysis.
+# The lexicon filters out any overgeneration these produce.
+#   - drop a stem-final silent e before "ed":  chase+ed -> chased,  like+ed -> liked
+#     (only after a consonant, so it never touches e.g. "freed")
+#   - y -> i before "ed":  try+ed -> tried
+%rule e:0 => Cons _ e d
+%rule y:i => _ e d
+
+# The second +N+Pl entry recognises the anticipated wrong plural "*childs"
+# (the FST emits "child+N+Pl" for both surfaces; morph_analyze narrows by
+# the actual surface and copies *ERR/*FIX onto the wrong-surface analysis).
+%lex N-irreg-children : N
+    +N+Sg :     <num>=sg <pers>=3 <vagr>=3sg
+    +N+Pl : ren <num>=pl <pers>=3 <vagr>=n3sg
+    +N+Pl : s   <num>=pl <pers>=3 <vagr>=n3sg  *ERR "irregular plural: 'children', not '*childs'"  *FIX children

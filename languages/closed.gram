@@ -1,0 +1,29 @@
+# Closed-class lexicon (%include'd from en.gram)
+#
+# Determiners, pronouns, prepositions, and irregular explicit verbs stay
+# explicit: they're irregular as a class and morphology has nothing to add.
+
+# Determiners            ( `the` is unmarked for number; a/an mark the sound of
+#                          the following noun: consonant vs vowel )
+the   : Det
+a     : Det  <num>=sg  <initial>=cons
+an    : Det  <num>=sg  <initial>=vowel
+this  : Det  <num>=sg
+these : Det  <num>=pl
+
+# Pronouns       num       pers      case        vagr         lemma
+I      : Pron  <num>=sg  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1sg
+me     : Pron  <num>=sg  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1sg
+he     : Pron  <num>=sg  <pers>=3  <case>=nom  <vagr>=3sg   <lemma>=pron.3sg.m
+him    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.m
+they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
+them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
+
+# Prepositions
+to   : P
+with : P
+on   : P
+
+# Regular past tense ("chased", "liked", "barked", "tried") is now productive:
+# see the V-reg `+V+Past : ed` entry and the %rule spelling adjustments in
+# morph.gram. Only genuinely irregular verbs would stay explicit here.

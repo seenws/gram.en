@@ -787,12 +787,14 @@ looked up in this order:
 
 The closed-class lexicon and the FST jointly partition the open vocabulary;
 the explicit lexicon doubles as the override mechanism for items that have
-no paradigm to follow (\texttt{the}, pronouns, prepositions) or that block a
-regular paradigm derivation (past-tense \texttt{chased} before a past-tense
-paradigm exists). Ambiguity propagates as a list --- a form that analyses as
-both noun and verb produces both entries --- and the parser resolves which
-fit into a tree (Section~13). The optional \textsf{err} field, populated only
-for error-tagged paradigm entries, is the subject of the next subsection.
+no paradigm to follow (\texttt{the}, pronouns, prepositions) or that are
+genuinely irregular. Regular inflection --- including the past tense, once the
+\texttt{\%rule} cascade of Section~\ref{sec:productive} is in place --- is
+paradigm-derived; \texttt{chased} is no longer an explicit entry. Ambiguity
+propagates as a list --- a form that analyses as both noun and verb produces
+both entries --- and the parser resolves which fit into a tree. The optional
+\textsf{err} field, populated only for error-tagged paradigm entries, is the
+subject of the next subsection.
 
 \subsection{Morphological mal-rules}
 
@@ -854,6 +856,92 @@ What the mechanism buys is the right place to put the next admitted
 error --- author it once in the grammar file; the rest of the pipeline
 already knows how to carry it.
 \end{remark}
+
+\subsection{Productive paradigms and the analysis direction}
+\label{sec:productive}
+
+For several phases the replace-rule cascade of Section~10.3 was machinery
+without a caller: the rule compiler, the apply primitives, and
+input-$\varepsilon$ elimination all existed, but no paradigm referred to a rule
+and the lexicon spelled out every surface, past-tense \texttt{chased} included.
+The \texttt{\%rule} directive (Section~\ref{sec:frontend}) supplies the caller.
+A paradigm entry may now store an \emph{underlying} suffix, and a cascade
+realises the orthographic surface from it. English regular past tense is the
+motivating case: the single entry and two rules
+
+\begin{verbatim}
+  %lex V-reg : V
+      +V+Past : ed  <tense>=past
+  %rule e:0 => Cons _ e d      # chase + ed -> chased   (drop a silent e)
+  %rule y:i => _ e d           # try   + ed -> tried    (y becomes i)
+\end{verbatim}
+
+replace the per-verb explicit entries; \texttt{chased}, \texttt{liked},
+\texttt{barked}, \texttt{tried} are all paradigm-derived.
+
+\emph{Three representations, two relations.} The lexicon transducer's lower
+tape, until now read as the final surface, is reinterpreted as a
+\emph{morphophonemic} string --- stem followed by the stored underlying suffix,
+e.g.\ \texttt{chaseed} for \texttt{chase}${}+{}$\texttt{ed}. Write $U$ for the
+morphophonemic strings, $T$ for the tag strings, $S$ for the orthographic
+surfaces. The lexicon is a regular relation $\mathrm{Lex} \subseteq U \times T$
+with $\textsf{apply}_\downarrow(\mathrm{Lex}, u) = \{\, t \mid (u,t) \in
+\mathrm{Lex} \,\}$; the cascade is a regular relation $\mathrm{Cas} \subseteq U
+\times S$ written in the generation direction, so
+$\textsf{apply}_\downarrow(\mathrm{Cas}, u)$ realises surfaces and
+$\textsf{apply}_\uparrow(\mathrm{Cas}, w) = \{\, u \mid (u,w) \in \mathrm{Cas}
+\,\}$ recovers morphophonemic pre-images.
+
+\begin{proposition}[Analysis is the composed pre-image]
+The analyses of a surface $w$ are
+\[
+  \mathcal{A}(w) \;=\; \{\, t \in T \mid \exists\, u \in U:\;
+     (u, w) \in \mathrm{Cas} \;\wedge\; (u, t) \in \mathrm{Lex} \,\}
+  \;=\; \pi_T\!\bigl( (\mathrm{Cas}^{-1} \circ \mathrm{Lex})[\,w\,] \bigr),
+\]
+and may be computed without ever composing the two machines, as
+\[
+  \mathcal{A}(w) \;=\; \bigcup_{u \,\in\, \textsf{apply}_\uparrow(\mathrm{Cas},\, w)}
+  \textsf{apply}_\downarrow(\mathrm{Lex},\, u).
+\]
+\end{proposition}
+
+This is exactly the engine's analysis loop: run the cascade \emph{upward} on the
+surface to get a finite candidate set of morphophonemic strings, then run each
+\emph{downward} through the lexicon to tags. The avoidance of an explicit
+composition is the lesson of Section~10.4 re-applied --- we never materialise
+$\mathrm{Cas}^{-1} \circ \mathrm{Lex}$, only its action on one input. With an
+empty cascade ($\mathrm{Cas} = \mathit{Id}$) the candidate set is $\{w\}$ and the
+loop degenerates to the old direct lookup, so grammars with no \texttt{\%rule}
+behave bit-for-bit as before.
+
+\emph{No boundary symbol.} We deliberately omit the morpheme-boundary diacritic
+of the textbook construction. There, the stem/suffix seam is marked
+(\texttt{\^{}}) so a rule can name ``immediately before a suffix'' exactly and a
+final rule deletes the marker, letting \texttt{e:0} fire only at a true
+junction. The engine instead lets rule contexts mention the suffix letters
+directly (\texttt{e:0 => Cons \_ e d}) and leans on the lexicon-as-filter
+argument of Section~10.3: context-only rules over-generate, but the
+over-generation is discarded downstream because no lexical analysis lands on a
+spurious string. The price of skipping the boundary is a single
+\emph{under-rejection}: because $\mathrm{Cas}$ contains identity, the raw
+morphophonemic form \texttt{chaseed} is itself a candidate that the lexicon
+accepts, so the analyzer admits it as a (non-word) spelling of
+\texttt{chase+V+Past}. This only ever fails to flag a non-word; it never
+mis-flags a real one, and it keeps intact the surface-literal contract that the
+lexicon FST and its round-trip generation tests were built on. A boundary symbol
+is the principled fix, postponed on the same terms as the marker construction.
+
+\emph{One invariant shifts.} Decoding a tag sequence back to a $(\textsf{root},
+\textsf{entry})$ pair (Section~10.6) used to narrow tag-shared candidates
+(\texttt{*childs}) by the input \emph{surface}. Once rules alter the surface,
+$\textsf{root.surface} + \textsf{entry.surface}$ is the morphophonemic candidate
+$u$, not the input $w$; the narrowing is therefore by $u$ --- the lexicon path
+that actually matched --- while the \emph{reported} form is the true input $w$.
+The \texttt{*childs} disambiguation survives unchanged: the entry that
+reconstructs to the matched candidate is kept (\texttt{ren} for the candidate
+\texttt{children}, the error-tagged \texttt{s} for the candidate \texttt{childs}),
+and the error rides the wrong-surface analysis exactly as before.
 
 \section{Feature structures in the grammar}
 
@@ -967,7 +1055,246 @@ This is the target behaviour: a verdict, the offending span, the violated rule,
 and a concrete repair --- all falling out of a single failed unification rather
 than a hand-written special case.
 
+\section{Auxiliaries, clitics, and the symbol-keyed environment}
+\label{sec:clitics}
+
+Completing a rule $A \to B_1 \cdots B_n$, the parser builds an environment
+$\rho$ mapping each constituent's category symbol to a feature structure: it
+seeds $\rho(A)$ with the empty structure, then sets $\rho(B_i)$ to daughter
+$i$'s structure, unifies the rule's equations against $\rho$, and reads the
+mother's structure back from $\rho(A)$. Keying $\rho$ by \emph{symbol} rather
+than by position has a deliberate consequence. When the mother shares a
+daughter's category --- $A = B_i$ for some $i$ --- the assignment
+$\rho(B_i) \leftarrow {}$daughter overwrites $\rho(A)$, so the mother
+\emph{is} that daughter. For \texttt{NP -> NP PP} and \texttt{VP -> VP PP} this
+is precisely head inheritance, obtained for free: the mother takes the head
+daughter's features with no equation written. The repeated-category caveat noted
+at the end of Section~\ref{sec:format} is the same coin's other face --- a rule
+with two same-category daughters cannot name them apart.
+
+That free inheritance is a hazard the moment the mother should \emph{not} be the
+like-named daughter. English auxiliaries are the case in point. The natural rule
+\texttt{VP -> Aux VP} makes the mother \texttt{VP} inherit the inner (lexical
+verb) \texttt{VP}, so a finite auxiliary cannot impose its own agreement: under
+that rule \texttt{he'll bark} would inherit \texttt{bark}'s
+$[\textsf{vagr}{:}\textsf{n3sg}]$ and clash with the third-singular subject
+\texttt{he}, mis-rejecting a grammatical sentence. The fix is to project the
+auxiliary through a fresh nonterminal, breaking the symbol collision:
+
+\begin{verbatim}
+  AuxP -> Aux VP        : AuxP.vagr = Aux.vagr
+  AuxP -> Aux Neg VP    : AuxP.vagr = Aux.vagr
+  VP   -> AuxP          : VP.vagr   = AuxP.vagr
+\end{verbatim}
+
+Because $\texttt{AuxP} \neq \texttt{VP}$, no environment entry is overwritten;
+agreement is read off the auxiliary head, and the unit rule \texttt{VP -> AuxP}
+lifts the projection back to a \texttt{VP} so the sentence rule \texttt{S -> NP
+VP} still applies. A modal like \texttt{'ll} carries no \textsf{vagr}, leaving
+\texttt{AuxP.vagr} unconstrained, so it unifies with any subject
+(\texttt{he'll bark} and \texttt{they'll bark} both parse); a number-marked
+auxiliary like \texttt{'ve} carries $[\textsf{vagr}{:}\textsf{n3sg}]$ and clashes
+with a third-singular subject (\texttt{he've} is rejected). The general principle:
+\emph{a recursive same-category rule whose mother should not take the like-named
+daughter's features must introduce a fresh nonterminal}; the symbol-keyed
+environment turns category identity into structure identity, which is exactly
+what head projection wants and exactly what auxiliary projection must avoid.
+
+The lexical material is supplied by the clitics the tokenizer splits off
+(Section~9). \texttt{don't} becomes \texttt{do} + \texttt{n't}, \texttt{I'm}
+becomes \texttt{I} + \texttt{'m}, and so on; the split pieces are unknown words
+unless the lexicon names them. Seven clitic forms (\texttt{n't}, \texttt{'m},
+\texttt{'re}, \texttt{'s}, \texttt{'ve}, \texttt{'ll}, \texttt{'d}) join the
+closed-class lexicon, alongside the full copula and do-support forms
+(\texttt{is}, \texttt{am}, \texttt{are}, \texttt{do}, \texttt{does}) needed
+because \texttt{isn't} and \texttt{doesn't} split to those stems plus
+\texttt{n't}. Two clitics are genuinely ambiguous --- \texttt{'s} is \emph{is} or
+\emph{has}, \texttt{'d} is \emph{would} or \emph{had} --- and get one lexicon
+entry per reading; the parser keeps whichever yields a parse, the same list-valued
+ambiguity the morphology already produces. Negation and do-support fall out of
+\texttt{AuxP -> Aux Neg VP}. One incompleteness is admitted in the same spirit as
+the coverage caveat of Section~6: the morphology draws no finite/nonfinite
+distinction, so \texttt{I'll barked} (modal followed by a finite past) is not
+rejected. That is a false negative --- a missed error, never a wrongly flagged
+correct sentence --- and is left until a verb-form feature exists to state the
+constraint.
+
+\section{The declarative front end}
+\label{sec:frontend}
+
+The \texttt{.gram} file began as lexicon entries, phrase-structure rules, and
+mal-rules. As the grammar grew it accreted a layer of \emph{directives} ---
+lines beginning \texttt{\%} --- that do not describe constituents directly but
+configure the pipeline that processes them. The analogy is a compiler's
+preprocessing and declaration layer: \texttt{\%include} is textual inclusion,
+\texttt{\%feature} is a type declaration, \texttt{\%class} is a macro over symbol
+sets, and \texttt{\%rule} loads the morphological back end. They share the
+property that all of their work is done before any sentence is analysed.
+
+\subsection{\texttt{\%feature}: a typing discipline on values}
+
+Feature values are atoms, and unification of distinct atoms yields $\top$
+(Section~5). A misspelt value is therefore not an error but a silent
+non-event: writing \texttt{<num>=sgular} produces a well-formed atom that
+happens to unify with nothing the grammar ever asserts, so the entry simply
+never participates in a successful parse, and the symptom is a missing analysis
+far from its cause. The \texttt{\%feature} directive turns this class of bug into
+a load-time error by declaring, for each feature, the finite set of atoms it may
+take (or \texttt{*} for an open feature such as \texttt{lemma}, whose values are
+unbounded). The declaration induces a typing judgment: with
+$\textsf{dom}(f) = \{v_1, \dots, v_k\}$ declared, an occurrence $f = v$ is
+well-typed iff $v \in \textsf{dom}(f)$, and an undeclared feature is ill-typed
+outright. A validator walks every feature structure the grammar produces ---
+lexicon entries, the value side of rule equations, and paradigm features --- and
+rejects the first ill-typed atom with its location. The check is opt-in: a
+grammar that declares no features is not validated, so the discipline is
+available without being imposed. Formally it is a soundness filter, not a
+completeness one --- it cannot certify that a feature is \emph{used} correctly,
+only that every value mentioned is one the feature is declared to range over ---
+but that single guarantee converts the most common authoring mistake from a
+silent semantic failure into a named, located, load-time rejection.
+
+\subsection{\texttt{\%class}: regular abstraction over rule contexts}
+
+Replace-rule contexts (Section~10.3) frequently want to name a phonological
+class --- ``after a consonant,'' ``before a vowel'' --- rather than a single
+symbol. \texttt{\%class Vowel : a | e | i | o | u} binds a name to a finite set
+of symbols. In a rule context the name denotes the single-symbol identity over
+that set,
+\[
+  \mathit{Id}_{\textsf{Vowel}} \;=\; \bigcup_{c \,\in\, \textsf{Vowel}}
+  \{\,(c, c)\,\},
+\]
+a regular relation, spliced into the rule transducer exactly where a literal
+symbol's identity would sit. A rule such as \texttt{e:0 => Cons \_ e d} thereby
+deletes a stem-final \texttt{e} only after a consonant, without enumerating the
+twenty-one consonants by hand. One parsing subtlety: a class name must survive
+tokenisation as a single opaque symbol --- \texttt{Cons} must not be read as
+\texttt{c o n s} --- so the class table is threaded into the rule parser, which
+consults it before falling back to character-level tokenisation.
+
+\subsection{\texttt{\%include} and \texttt{\%import}: modularity and the load/run split}
+
+As the closed-class lexicon, the open-class morphology, and the syntax grew, a
+single file stopped being the right unit. \texttt{\%include} splices another
+\texttt{.gram} file's lines in place; \texttt{\%import} reads a tab-separated
+lexicon and expands each row into a \texttt{\%lex Root} entry. Both are a
+source-to-source pass run before parsing: a function
+\[
+  \textsf{Expand} : \Star{\Sigma} \times (\textsf{path} \to \Star{\Sigma})
+                    \;\to\; \Star{\Sigma},
+\]
+taking the root text and a \emph{resolver} --- a map from a relative path to its
+contents --- to a single flat line stream with every directive discharged.
+Expansion is recursive and the include graph must be acyclic; a back-edge is a
+load error, detected by a visited-set on the resolution stack. Each emitted line
+carries an origin (file and line number) so that a parse error downstream points
+into the source the author actually wrote, not into the flattened stream.
+
+Injecting the resolver rather than reading files directly is what lets the same
+parser run in two environments with opposite constraints. Under Node the
+resolver reads from disk. In the browser there is no filesystem at run time, so
+the expansion is performed once at \emph{build} time --- the grammar is flattened
+to a single directive-free string and bundled --- and the run-time parser is
+handed text with no directives left to resolve. This is the load-time/run-time
+separation a compiler makes between preprocessing and execution, here doubling as
+the portability seam between a server and a browser: directive resolution is a
+build concern, analysis is a run concern, and the resolver is the one interface
+between them.
+
+\section{Accidental complexity in decoding and fix generation}
+\label{sec:complexity}
+
+Section~10.4 recorded a cost invisible in the algebra and unmissable at the
+runtime. Two more of the same shape surfaced under a load the unit grammar never
+exercised --- a ten-thousand-word imported lexicon --- and both are worth
+recording, because both are the same mistake: an operation that is silently
+linear in the size of the lexicon, sitting on a path that the diagnosis machinery
+re-runs many times.
+
+\emph{Decoding.} The decoder of Section~10.6 mapped a lexical tape back to its
+$(\textsf{root}, \textsf{entry})$ analyses by scanning \emph{every} root and
+testing whether its surface is a prefix of the tape --- $O(R)$ per analysed
+token, with $R$ the number of roots. The lexical tape is, by construction, the
+stem's characters (one symbol each) followed by the tag symbols, so the stem is
+recoverable by its content alone. Indexing the roots by surface,
+$\textsf{idx} : \Star{\Sigma} \to \mathcal{P}(\textsf{Root})$, and walking the
+prefixes of the tape --- testing each prefix against $\textsf{idx}$ --- finds the
+stem in $O(\ell)$ lookups, $\ell$ the stem length, independent of $R$. The walk
+preserves the scan's exact semantics: overlapping stems (\texttt{do} and
+\texttt{dog}) are both found, at their respective prefix lengths, and the prefix
+is built by concatenating tape \emph{symbols} rather than by indexing into a
+string, so multi-code-unit characters stay consistent with how the trie emitted
+them. The index is memoised on the (post-parse immutable) morphology, so the
+$O(R)$ construction is paid once per grammar rather than once per token.
+
+\emph{Fix generation.} When a parse fails on a relaxable constraint, the engine
+proposes repairs (Section~12): for \texttt{agree-verb} it substitutes another
+form of the same verb, for \texttt{add-determiner} it inserts each determiner,
+and so on. Each strategy drew its candidates from a helper that materialised the
+\emph{entire} surface inventory --- explicit entries plus every
+$(\textsf{root} \times \textsf{entry})$ expansion, with a unification apiece ---
+on every call, $O(L)$ for $L \approx R \times {}$forms. Several strategies fire
+per diagnosis, and each candidate is re-parsed to confirm it lowers the violation
+count, so the linear cost was multiplied by candidate count and by re-analysis.
+The fix is the same shape as for decoding: build the inventory once per grammar,
+memoised, and index it by the keys the lookups actually use --- by category, and
+by $(\textsf{category}, \textsf{lemma})$ --- so each lookup is $O(\textsf{matches})$
+rather than $O(L)$.
+
+The effect, measured on the ten-thousand-word lexicon over a mixed workload of
+grammatical, mal-rule, and relaxed-diagnostic sentences:
+
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+input class (median latency)        & original & + root index & + fix index \\
+\midrule
+grammatical                         & 4.64 ms  & 1.29 ms      & 1.43 ms     \\
+mal-rule (word order)               & 8.94 ms  & 2.63 ms      & 2.59 ms     \\
+relaxed (subject--verb agreement)   & 44.3 ms  & 25.8 ms      & 7.22 ms     \\
+relaxed (missing determiner)        & 75.1 ms  & 33.4 ms      & 15.5 ms     \\
+\midrule
+overall p95                         & 77 ms    & 34 ms        & 16.7 ms     \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The proof point is that the relaxed paths, after both indexes, run at the same
+latency on the ten-thousand-word grammar as on the two-word grammar --- analysis
+and repair are now independent of lexicon size. What remains in the relaxed rows
+is the candidate-count multiplier of re-parsing repairs, which scales with the
+grammar's rule set and the number of fix strategies, not with the lexicon, and is
+the irreducible cost of validating suggestions rather than an accidental
+complexity to be removed.
+
+\begin{remark}
+The general lesson, stated once: an operation that is linear in the lexicon is
+invisible on a toy grammar and dominant at scale, and the diagnosis path
+amplifies it by re-running analysis on every repair candidate. The remedy in
+both cases was to precompute an index keyed by the lookup actually performed and
+to memoise it on the grammar, which is immutable once parsed. The benchmark, not
+the algebra, is what made the cost visible --- the same bisection discipline as
+Section~10.4.
+\end{remark}
+
+\section{Explainability and the chart trace}
+
+The engine's premise is that a verdict should come with its reason, and the same
+commitment extends to the engine's own behaviour during development. A trace mode
+narrates the analysis to a side channel without altering the verdict: it prints
+each token's morphological analyses, then each step of the chart parse ---
+\textsc{predict}, \textsc{scan}, \textsc{complete} --- flagging where a prediction
+finds no rule, where a scan finds no token of the required category, and where a
+completion is blocked by a feature clash, before dumping the final chart by
+column. The dead-ends are the useful part: an absent parse (Section~6) is silent
+by nature, and the trace turns it into a located event --- ``at column $i$,
+expected a \texttt{V}, found only an \texttt{Aux}'' --- which is the difference
+between a coverage gap one can see and one one cannot. The same explainability
+the engine offers its user, it offers its author.
+
 \section{The grammar file format}
+\label{sec:format}
 
 The engine reads a grammar from a plain-text \texttt{.gram} file. The format is a
 concrete syntax for the unification grammar of Section~11 --- PATR-II in spirit
@@ -980,7 +1307,7 @@ The grammar of the format (\texttt{::=} defines, \texttt{|} alternates,
 end of line):
 
 \begin{verbatim}
-  grammar    ::= { lexentry | rule | malrule }
+  grammar    ::= { lexentry | rule | malrule | directive }
 
   lexentry   ::= word ":" cat { featpath "=" value } EOL
 
@@ -990,6 +1317,14 @@ end of line):
   diag       ::= "!" string [ "fix:" strategy { "|" strategy } ]
 
   malrule    ::= "%mal" production "*ERR" string [ "*FIX" text ]
+
+  directive  ::= feature | class | replrule | include | import
+  feature    ::= "%feature" feature ":" ( value { "|" value } | "*" ) EOL
+  class      ::= "%class" name ":" sym { "|" sym } EOL
+  replrule   ::= "%rule" pat ":" pat [ "=>" { ctxsym } "_" { ctxsym } ] EOL
+  include    ::= "%include" path EOL          # splice another .gram file
+  import     ::= "%import"  path EOL          # TSV: stem TAB paradigm TAB feats
+  ctxsym     ::= sym | name                   # a literal symbol or a %class
 
   featpath   ::= "<" feature { feature } ">"        # implicit constituent: the
                                                     # entry's own structure
@@ -1022,12 +1357,20 @@ The semantics the syntax does not show:
         relaxing exactly that constraint rescues the parse; \texttt{fix:} names
         repair strategies. A \texttt{\%mal} rule instead recognizes a wrong
         pattern directly and always reports.
+  \item Directive lines (\texttt{\%}-prefixed) are discharged before parsing:
+        \texttt{\%include} and \texttt{\%import} expand textually
+        (Section~\ref{sec:frontend}), \texttt{\%feature} declares the value types
+        checked at load, \texttt{\%class} names a symbol set usable in rule
+        contexts, and \texttt{\%rule} adds a morphophonemic replace rule to the
+        cascade (Section~\ref{sec:productive}).
 \end{itemize}
 
 One caveat in the present design: a path identifies a constituent by category
 symbol, which is unambiguous only when that symbol occurs once in the production.
 A rule with a repeated category (\texttt{S -> NP NP}) would need indexed names
-(\texttt{NP.1}, \texttt{NP.2}); the current fragment avoids the situation.
+(\texttt{NP.1}, \texttt{NP.2}); the current fragment avoids the situation. The
+same symbol-keying is what gives free head-feature inheritance and what forces
+the auxiliary-projection workaround of Section~\ref{sec:clitics}.
 
 \begin{thebibliography}{9}
 \bibitem{chomsky1956} N.\ Chomsky. \emph{Three models for the description of
