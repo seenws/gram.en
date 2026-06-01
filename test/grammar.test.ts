@@ -67,7 +67,7 @@ test("the subject-verb equation is tagged with a message and fixes", () => {
     const s = g.rules.find((r) => r.name === "S -> NP VP")!;
     const agr = s.eqs.find((e) => e.diag && /agreement/i.test(e.diag.message));
     assert.ok(agr && agr.diag);
-    assert.deepEqual(agr.diag.fixes, ["agree-verb", "agree-subject"]);
+    assert.deepEqual(agr.diag.fixes, ["agree(V)", "agree(N)"]);
 });
 
 test("en.gram declares N-reg and V-reg paradigms", () => {
@@ -159,4 +159,37 @@ dog : N <lemma>=anything-goes`;
 test("a grammar that declares no features opts out of validation", () => {
     // no %feature block -> the typo loads silently (it just never unifies)
     assert.doesNotThrow(() => parse_grammar(`dog : N <num>=sgular`));
+});
+
+// Engine-config directives: %start / %tokenizer / %clitic --------------------
+
+test("en.gram declares its start symbol and whitespace tokenizer", () => {
+    assert.equal(g.start, "S");
+    assert.deepEqual(g.tokenize("don't"), [
+        { text: "do", start: 0, end: 2 },
+        { text: "n't", start: 2, end: 5 },
+    ]);
+});
+
+test("start symbol defaults to S when no %start is declared", () => {
+    const h = parse_grammar(`S -> NP\nNP -> N`);
+    assert.equal(h.start, "S");
+});
+
+test("%start lets a grammar parse from a non-S nonterminal", () => {
+    const h = parse_grammar(`%start Utterance\nUtterance -> Word\nWord -> N`);
+    assert.equal(h.start, "Utterance");
+});
+
+test("%start naming an unknown nonterminal fails at load", () => {
+    assert.throws(() => parse_grammar(`%start Nope\nS -> NP`), /%start Nope is not a nonterminal/);
+});
+
+test("an unknown %tokenizer fails at load", () => {
+    assert.throws(() => parse_grammar(`%tokenizer mystery\nS -> NP`), /unknown %tokenizer 'mystery'/);
+});
+
+test("with no %clitic, the whitespace tokenizer peels nothing off", () => {
+    const h = parse_grammar(`S -> NP`);
+    assert.deepEqual(h.tokenize("don't").map((t) => t.text), ["don't"]);
 });

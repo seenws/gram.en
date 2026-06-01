@@ -10,11 +10,13 @@
 #   rule          : LHS -> RHS RHS ...
 #                   <path> = <path>     # unify two constituents' substructures
 #                   <path> = value      # constrain a feature to an atomic value
-#   diagnostic    : append  ! "message"  fix: strategy | strategy   to an equation;
+#   diagnostic    : append  ! "message"  fix: primitive | primitive   to an equation
+#                   (primitives: agree(<cat>[,<feat>=<val>]) | swap(<cat>) | insert(<cat>));
 #                   reported (with the constituents in the equation highlighted)
 #                   when relaxing exactly that constraint rescues the parse.
 #   mal-rule      : %mal LHS -> RHS ...   with *ERR "message" and *FIX ...
 #   declaration   : %feature <name> : v1 | v2 | ...   (or `: *` for an open feature)
+#   engine config : %start <Sym>   %tokenizer <name>   %clitic <suffix>...
 #   file directive: %include <file.gram>   %import <file.tsv>
 #
 # Feature values are atomic for this first slice (no disjunction/sets).
@@ -46,6 +48,12 @@
 %feature req     : bare | pastp | prp
 %feature degree  : pos | comp | sup
 %feature lemma   : *
+
+# Engine configuration. English parses from S, splits on whitespace, and peels off
+# the contraction clitics so "don't"/"I'll" tokenize as do+n't / I+'ll.
+%start S
+%tokenizer whitespace
+%clitic n't 're 've 'll 'm 'd 's
 
 %include closed.gram
 %include clitics.gram

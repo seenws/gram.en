@@ -1,8 +1,8 @@
 # Grammar rules (%include'd from en.gram)
 
 S -> NP VP
-    <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree-verb | agree-subject
-    <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: nominative-pronoun
+    <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree(V) | agree(N)
+    <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: agree(Pron, case=nom)
     <VP vform> = fin        # the head of a main clause must be a finite verb
 
 # Clause coordination: "the dog barks and the cat barks". Each conjunct is an
@@ -10,14 +10,14 @@ S -> NP VP
 S -> S Conj S
 
 NP -> Det N
-    <Det num> = <N num>         ! "determiner-noun number agreement"  fix: agree-det | agree-noun
-    <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
+    <Det num> = <N num>         ! "determiner-noun number agreement"  fix: swap(Det) | agree(N)
+    <N initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: swap(Det)
     <NP num>  = <N num>
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
 
 NP -> N
-    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
+    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: insert(Det) | agree(N)
     <NP num>  = <N num>
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
@@ -26,14 +26,14 @@ NP -> N
 # ("a big dog", "an old dog"), so the article check moves onto the AdjP; the
 # adjective is otherwise transparent to number/person/agreement.
 NP -> Det AdjP N
-    <Det num> = <N num>            ! "determiner-noun number agreement"  fix: agree-det | agree-noun
-    <AdjP initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: agree-article
+    <Det num> = <N num>            ! "determiner-noun number agreement"  fix: swap(Det) | agree(N)
+    <AdjP initial> = <Det initial> ! "article form: use 'a' before a consonant, 'an' before a vowel"  fix: swap(Det)
     <NP num>  = <N num>
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
 
 NP -> AdjP N
-    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: add-determiner | agree-noun
+    <N num>   = pl          ! "singular count nouns need a determiner (e.g. 'a dog', 'the dog')"  fix: insert(Det) | agree(N)
     <NP num>  = <N num>
     <NP pers> = <N pers>
     <NP vagr> = <N vagr>
@@ -83,7 +83,7 @@ VP -> V
 VP -> V NP
     <VP vagr> = <V vagr>
     <VP vform> = <V vform>
-    <NP case> = acc         ! "the object must be an accusative pronoun"  fix: accusative-pronoun
+    <NP case> = acc         ! "the object must be an accusative pronoun"  fix: agree(Pron, case=acc)
 # A Det-N NP sets no `case`, so it stays open and fills subject or object
 # position freely; only pronouns can clash on case.
 
@@ -112,18 +112,18 @@ VP -> Cop Neg AdjP
 AuxP -> Aux VP
     <AuxP vagr> = <Aux vagr>
     <AuxP vform> = fin
-    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree-verb
+    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree(V)
 AuxP -> Aux Neg VP
     <AuxP vagr> = <Aux vagr>
     <AuxP vform> = fin
-    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree-verb
+    <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree(V)
 VP -> AuxP
     <VP vagr> = <AuxP vagr>
     <VP vform> = <AuxP vform>
 
 
 PP -> P NP
-    <NP case> = acc         ! "the object of a preposition must be accusative"  fix: accusative-pronoun
+    <NP case> = acc         ! "the object of a preposition must be accusative"  fix: agree(Pron, case=acc)
 
 # The mother shares its symbol with the head daughter, so apply_equations' env
 # (keyed by category symbol) makes the mother inherit the head daughter's feature

@@ -9,7 +9,6 @@ import {
     full_parses,
     match_sequence,
 } from "./parser.ts";
-import { tokenize_spans } from "./tokenize.ts";
 import { morph_analyze } from "./morph.ts";
 import { effective_entries } from "./morph_lexc.ts";
 
@@ -35,7 +34,7 @@ export type analysis = {
 export type analyze_options = { trace?: tracer };
 
 export function analyze(g: grammar, sentence: string, opts: analyze_options = {}): analysis {
-    const spanned = tokenize_spans(sentence);
+    const spanned = g.tokenize(sentence);
     const tokens = spanned.map((t) => t.text);
     const char_span = (span: [number, number]): [number, number] =>
         span[1] > span[0] && span[1] <= spanned.length
@@ -275,10 +274,6 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
     const of_cat_lemma = (cat: string, lemma: string | null): lex_entry[] =>
         idx.by_cat_lemma.get(`${cat}\t${lemma ?? ""}`) ?? [];
     const sub = (pos: number, form: string): string[] => tokens.map((tok, i) => (i === pos ? form : tok));
-    const same_lemma = (cat: string, leaf: { pos: number; lemma: string | null }): string[][] =>
-        of_cat_lemma(cat, leaf.lemma)
-            .filter((e) => e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
-            .map((e) => sub(leaf.pos, e.form));
 
     // morph mal-rules carry the correct surface in the strategy itself; the
     // token position is the start of the violation's span
@@ -287,47 +282,46 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
         return [sub(v.span[0], form)];
     }
 
-    switch (strat) {
-        case "agree-verb": {
-            const leaf = find_leaf(t, "V");
+    // Every other strategy is a parameterized repair primitive: `name(<cat>[,
+    // <feat>=<val>])`. The category and feature come from the grammar's `fix:`
+    // annotation, so the engine stays language-neutral (no hardcoded N/V/Det/case).
+    const m = strat.match(/^(\w+)\(([^)]*)\)$/);
+    if (!m) return [];
 
-            return leaf ? same_lemma("V", leaf) : [];
-        }
-        case "agree-subject":
-        case "agree-noun": {
-            const leaf = find_leaf(t, "N");
+    const name = m[1];
+    const args = m[2].split(",").map((a) => a.trim()).filter(Boolean);
+    const cat = args[0];
+    const [feat, val] = args[1] ? args[1].split("=").map((x) => x.trim()) : [null, null];
 
-            return leaf ? same_lemma("N", leaf) : [];
-        }
-        case "agree-det":
-        case "agree-article": {
-            const leaf = find_leaf(t, "Det");
+    switch (name) {
+        // re-inflect the <cat> leaf to its same-lemma paradigm variants, optionally
+        // only those carrying <feat>=<val> (e.g. agree(Pron, case=nom))
+        case "agree": {
+            const leaf = find_leaf(t, cat);
 
             if (!leaf) return [];
 
-            return of_cat("Det")
+            return of_cat_lemma(cat, leaf.lemma)
+                .filter((e) => e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
+                .filter((e) => (feat ? feat_of(e, feat) === val : true))
+                .map((e) => sub(leaf.pos, e.form));
+        }
+        // replace the <cat> leaf with any other entry of that category (cross-lemma:
+        // for determiners/articles, which share no lemma)
+        case "swap": {
+            const leaf = find_leaf(t, cat);
+
+            if (!leaf) return [];
+
+            return of_cat(cat)
                 .filter((e) => e.form.toLowerCase() !== tokens[leaf.pos].toLowerCase())
                 .map((e) => sub(leaf.pos, e.form));
         }
-        case "add-determiner": {
-            const leaf = find_leaf(t, "N");
-
-            if (!leaf) return [];
-
-            return of_cat("Det")
-                .map((e) => [...tokens.slice(0, leaf.pos), e.form, ...tokens.slice(leaf.pos)]);
-        }
-        case "nominative-pronoun":
-        case "accusative-pronoun": {
-            const want = strat === "nominative-pronoun" ? "nom" : "acc";
-            const leaf = find_leaf(t, "Pron");
-
-            if (!leaf) return [];
-
-            return of_cat_lemma("Pron", leaf.lemma)
-                .filter((e) => feat_of(e, "case") === want)
-                .map((e) => sub(leaf.pos, e.form));
-        }
+        // insert each entry of <cat> at the start of the violation's span (e.g. a
+        // determiner before a bare noun)
+        case "insert":
+            return of_cat(cat)
+                .map((e) => [...tokens.slice(0, v.span[0]), e.form, ...tokens.slice(v.span[0])]);
         default:
             return [];
     }

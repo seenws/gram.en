@@ -1,16 +1,20 @@
 export type token = { text: string; start: number; end: number };
 
+// A tokenizer turns a raw sentence into surface tokens with source spans. Each
+// language picks one via the `%tokenizer` directive (see build_tokenizer); the
+// default is whitespace splitting, configurable with the clitics it should peel off.
+export type tokenizer = (sentence: string) => token[];
+
 const ALNUM = /[\p{L}\p{N}]/u;
 
-// Contraction clitics, longest first so "n't" beats a hypothetical "'t" suffix.
-// For "n't" the split lands one character before the apostrophe (do|n't);
-// for the others it lands on the apostrophe (I|'m).
-const CONTRACTION_SUFFIXES = ["n't", "'re", "'ve", "'ll", "'m", "'d", "'s"];
-
-function split_contractions(text: string, start: number, end: number): token[] {
+// Peel a trailing clitic off [start, end) if the span ends with one (clitics are
+// pre-sorted longest-first so e.g. "n't" beats a hypothetical "'t"). For "n't" the
+// split lands one char before the apostrophe (do|n't); for "'m" it lands on the
+// apostrophe (I|'m). Recognition is case-insensitive; the head keeps its case.
+function split_clitics(text: string, start: number, end: number, clitics: string[]): token[] {
     const lower = text.slice(start, end).toLowerCase();
 
-    for (const suffix of CONTRACTION_SUFFIXES) {
+    for (const suffix of clitics) {
         if (lower.length > suffix.length && lower.endsWith(suffix)) {
             const split = end - suffix.length;
 
@@ -24,7 +28,7 @@ function split_contractions(text: string, start: number, end: number): token[] {
     return [{ text: text.slice(start, end), start, end }];
 }
 
-export function tokenize_spans(text: string): token[] {
+function whitespace_spans(text: string, clitics: string[]): token[] {
     const out: token[] = [];
     const re = /\S+/g;
     let m: RegExpExecArray | null;
@@ -37,13 +41,30 @@ export function tokenize_spans(text: string): token[] {
         while (e > s && !ALNUM.test(text[e - 1])) e--;
 
         if (e > s) {
-            for (const tok of split_contractions(text, s, e)) out.push(tok);
+            for (const tok of split_clitics(text, s, e, clitics)) out.push(tok);
         }
     }
 
     return out;
 }
 
-export function tokenize(text: string): string[] {
-    return tokenize_spans(text).map((t) => t.text);
+// Whitespace tokenizer, optionally peeling off the given clitic suffixes. With no
+// clitics it is a plain whitespace splitter (Swedish, Russian); English supplies its
+// contraction suffixes via `%clitic`. The Unicode-aware ALNUM class already covers
+// accented Latin (å/ä/ö) and Cyrillic, so no per-language alphabet is needed.
+export function whitespace_tokenizer(clitics: string[] = []): tokenizer {
+    const sorted = [...clitics].sort((a, b) => b.length - a.length); // longest-first
+    return (sentence) => whitespace_spans(sentence, sorted);
+}
+
+// Registry mapping a `%tokenizer <name>` to its implementation. `longest-match`
+// (greedy dictionary segmentation for space-less scripts like Japanese) is added
+// later, alongside the Japanese grammar.
+export function build_tokenizer(name: string, clitics: string[]): tokenizer {
+    switch (name) {
+        case "whitespace":
+            return whitespace_tokenizer(clitics);
+        default:
+            throw new Error(`unknown %tokenizer '${name}' (known: whitespace)`);
+    }
 }

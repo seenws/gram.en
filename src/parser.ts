@@ -333,7 +333,7 @@ function make_violation(r: rule, eq: equation, d: diag, children: edge[], start:
 }
 
 export function full_parses(c: ctx, n: number): edge[] {
-    return chart_parse(c, rules_by_lhs(c.g.rules), "S", n);
+    return chart_parse(c, rules_by_lhs(c.g.rules), c.g.start, n);
 }
 
 export function match_sequence(c: ctx, syms: string[], n: number): edge[][] {

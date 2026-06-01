@@ -268,6 +268,24 @@ test("possessive pronouns are not offered as case repairs for personal pronouns"
     }
 });
 
+// Parameterized fix primitives generalize past English nom/acc: a Russian-style
+// grammar with a `gen` case must be repairable via agree(Pron, case=gen).
+test("agree(<cat>, <feat>=<val>) fixes work for an arbitrary feature value", () => {
+    const ru_like = parse_grammar(`%feature case  : nom | gen
+%feature lemma : *
+S -> Pron
+    <Pron case> = gen   ! "this slot needs the genitive"  fix: agree(Pron, case=gen)
+ya    : Pron  <case>=nom  <lemma>=p1
+menya : Pron  <case>=gen  <lemma>=p1`);
+
+    assert.equal(analyze(ru_like, "menya").verdict, "grammatical");
+
+    const bad = analyze(ru_like, "ya");
+    assert.equal(bad.verdict, "ungrammatical");
+    assert.match(bad.violations[0].message, /genitive/i);
+    assert.ok(bad.violations[0].fixes.includes("menya"), `fixes ${JSON.stringify(bad.violations[0].fixes)}`);
+});
+
 test('span for "the dog bark" highlights the verb', () => {
     const a = analyze(g, "the dog bark");
     assert.deepEqual(a.violations[0].span, [2, 3]);

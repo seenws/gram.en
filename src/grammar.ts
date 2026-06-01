@@ -5,6 +5,7 @@ import { type feature_decls, validate_features } from "./validate.ts";
 import { type resolver, expand_grammar } from "./loader.ts";
 import { type char_classes, type cascade, type rule_spec, parse_rule, compile_cascade } from "./morph_rules.ts";
 import { tokenize_symbols } from "./fst.ts";
+import { type tokenizer, build_tokenizer } from "./tokenize.ts";
 
 // A constraint path names a constituent of a production -- the mother (LHS) or a
 // daughter by its RHS position -- then a feature path into its structure. The
@@ -30,6 +31,11 @@ export type grammar = {
     classes: char_classes;
     morph: morph_data;
     morph_fst: fst | null;
+    // The start nonterminal (from `%start`, else the first rule's LHS) and the
+    // per-language tokenizer (from `%tokenizer`/`%clitic`). Both let a non-English
+    // grammar drop in without touching the engine.
+    start: string;
+    tokenize: tokenizer;
     // Morphophonemic rewrite rules (from %rule), in generation order. Applied
     // upward (apply_cascade_up) to a surface to recover the underlying strings
     // the lexicon FST recognises. Empty when the grammar declares no %rule.
@@ -290,6 +296,11 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
     // reference any %class regardless of declaration order.
     const rule_texts: { text: string; loc: string }[] = [];
     const morph_lines: string[] = [];
+    // Per-language engine settings, collected from directives and resolved after
+    // the loop: `%start <Sym>`, `%tokenizer <name>`, `%clitic <suffix>...`.
+    let start_sym: string | null = null;
+    let tokenizer_name = "whitespace";
+    const clitics: string[] = [];
 
     type cursor =
         | { kind: "rule"; rule: rule; resolve: const_resolver }
@@ -323,6 +334,17 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
                 cur = null;
             } else if (trimmed.startsWith("%rule")) {
                 rule_texts.push({ text: trimmed.slice("%rule".length).trim(), loc });
+                cur = null;
+            } else if (trimmed.startsWith("%start")) {
+                start_sym = trimmed.slice("%start".length).trim();
+                if (!start_sym) throw new grammar_error(loc, "%start needs a nonterminal");
+                cur = null;
+            } else if (trimmed.startsWith("%tokenizer")) {
+                tokenizer_name = trimmed.slice("%tokenizer".length).trim();
+                if (!tokenizer_name) throw new grammar_error(loc, "%tokenizer needs a name");
+                cur = null;
+            } else if (trimmed.startsWith("%clitic")) {
+                clitics.push(...trimmed.slice("%clitic".length).trim().split(/\s+/).filter(Boolean));
                 cur = null;
             } else if (trimmed.startsWith("%lex")) {
                 morph_lines.push(raw);
@@ -397,5 +419,16 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
 
     validate_features(features, lexicon, rules, morph);
 
-    return { lexicon, rules, malrules, nonterminals, features, classes, morph, morph_fst, morph_cascade };
+    // Start defaults to "S" (the historical default) unless declared; an explicit
+    // %start must name a real nonterminal. The tokenizer comes from the registry.
+    if (start_sym !== null && !nonterminals.has(start_sym)) {
+        throw new grammar_error(opts.filename ?? "en.gram", `%start ${start_sym} is not a nonterminal`);
+    }
+    const start = start_sym ?? "S";
+    const tokenize = build_tokenizer(tokenizer_name, clitics);
+
+    return {
+        lexicon, rules, malrules, nonterminals, features, classes, morph, morph_fst, morph_cascade,
+        start, tokenize,
+    };
 }
