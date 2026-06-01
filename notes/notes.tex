@@ -951,47 +951,6 @@ phrase without a determiner. They also carry case directly:
 This lets the same VP-object rule reject \texttt{the cat chased I} and accept
 \texttt{the cat chased me}.
 
-\section{The grammar language}
-
-The engine reads grammars from plain-text \texttt{.gram} files. The format is a small
-declarative language: lexicon entries define words, phrase rules define structure, feature
-equations define constraints, and directives configure morphology and modular loading.
-
-\begin{table}[h]
-\centering
-\begin{tabular}{@{}p{0.32\linewidth}p{0.58\linewidth}@{}}
-\toprule
-Form & Meaning \\
-\midrule
-\texttt{word : CAT <f>=v} & Lexicon entry with category and feature value. \\
-\texttt{A -> B C} & Phrase-structure rule. \\
-\texttt{<B f> = <C f>} & Feature equation attached to a rule. \\
-\texttt{! "message" fix: ...} & Diagnostic attached to a constraint. \\
-\texttt{\%mal ... *ERR ... *FIX ...} & Targeted error pattern. \\
-\texttt{\%feature num : sg | pl} & Declares legal values for a feature. \\
-\texttt{\%class Vowel : a | e | i | o | u} & Defines a symbol class for morphology rules. \\
-\texttt{\%rule e:0 => Cons \_ e d} & Morphophonemic rewrite rule. \\
-\texttt{\%include}, \texttt{\%import} & File inclusion and TSV lexicon import. \\
-\bottomrule
-\end{tabular}
-\caption{Major forms in the grammar language.}
-\end{table}
-
-The \texttt{\%feature} directive is a load-time type discipline. If a grammar declares
-
-\begin{lstlisting}[language=gram]
-%feature num : sg | pl
-\end{lstlisting}
-
-then a typo such as \texttt{<num>=sgular} is rejected when the grammar loads rather than turning
-into a silent feature value that never unifies. Open features such as lemmas can be declared with
-\texttt{*}.
-
-The \texttt{\%include} and \texttt{\%import} directives let \texttt{en.gram} become a manifest
-rather than a single monolithic file. A typical layout separates closed-class words, clitics,
-morphology, syntax, and imported open-class lexicons. For the browser build, the grammar can be
-flattened at build time so runtime analysis stays filesystem-free.
-
 \section{Trace mode and explainability}
 
 A useful engine needs to explain itself to two audiences: the user and the author. User-facing
@@ -1151,9 +1110,9 @@ syntax is parsed over a context-free backbone, and grammatical constraints are
 checked by unifying feature structures. The \texttt{.gram} file is where those
 ideas become executable data. It is the engine's source language.
 
-This is the compiler analogy at its most literal. A \texttt{.gram} file is not a
-configuration file in the weak sense of toggling options; it is a small
-declarative program. Its lexicon entries introduce symbols, its phrase-structure
+This is the compiler analogy at its most literal. The engine reads grammars from plain-text \texttt{.gram} files. The format is a small
+declarative language: lexicon entries define words, phrase rules define structure, feature
+equations define constraints, and directives configure morphology and modular loading. Its lexicon entries introduce symbols, its phrase-structure
 rules describe admissible local trees, its equations impose feature constraints,
 and its diagnostic annotations say which failures are meaningful enough to
 report. Loading a grammar therefore resembles compiling a source file: includes

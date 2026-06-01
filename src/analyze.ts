@@ -238,14 +238,31 @@ function find_leaf(t: tree, cat: string): { pos: number; lemma: string | null; f
     return null;
 }
 
+// Bound the relaxed-parse work per violation so it stays flat as the lexicon grows.
+// The worst case today emits <= 3 fixes, all early in candidate order, so these
+// generous caps never drop a real suggestion.
+// Future: a smarter ranking could let us tighten these once strategies are ordered
+// by likelihood rather than declaration order.
+const MAX_FIXES = 4;
+const MAX_TRIES = 16;
+
 function generate_fixes(g: grammar, tokens: string[], t: tree, v: violation, base_count: number): string[] {
     const out = new Set<string>();
+    const tried = new Set<string>();
 
-    for (const strat of v.fix_strategies) {
+    outer: for (const strat of v.fix_strategies) {
         for (const cand of candidates_for(g, strat, tokens, t, v)) {
+            if (out.size >= MAX_FIXES || tried.size >= MAX_TRIES) break outer;
+
+            const key = cand.join(" ");
+
+            // a repair reachable from two strategies is parsed once, not twice
+            if (tried.has(key)) continue;
+            tried.add(key);
+
             // only keep a repair that lowers the violation count: a clean parse for a
             // single-error sentence, an incremental fix for a multi-error one
-            if (violation_count(g, cand) < base_count) out.add(cand.join(" "));
+            if (beats_base(g, cand, base_count)) out.add(key);
         }
     }
 
@@ -356,15 +373,18 @@ export function parses_clean(g: grammar, tokens: string[]): boolean {
     return full_parses(c, tokens.length).some((e) => e.violations.length === 0);
 }
 
-function violation_count(g: grammar, tokens: string[]): number {
-    if (tokens.some((t) => morph_analyze(g, t).length === 0)) return Infinity;
+// True iff re-parsing `tokens` yields strictly fewer violations than `base_count`.
+// For the dominant base_count === 1 case a clean strict parse is the only way to
+// win, so we skip the relaxed parse entirely; the relaxed count is consulted only
+// to detect a *partial* improvement (base_count > 1).
+function beats_base(g: grammar, tokens: string[], base_count: number): boolean {
+    if (tokens.some((t) => morph_analyze(g, t).length === 0)) return false;
 
-    if (parses_clean(g, tokens)) return 0;
+    if (parses_clean(g, tokens)) return true; // 0 violations < base_count
 
-    const lex = build_lex_items(g, tokens);
-    const relaxed = full_parses(make_ctx(g, lex, true), tokens.length);
+    if (base_count <= 1) return false; // only a clean parse beats a single error
 
-    if (relaxed.length === 0) return Infinity;
+    const relaxed = full_parses(make_ctx(g, build_lex_items(g, tokens), true), tokens.length);
 
-    return Math.min(...relaxed.map((e) => e.violations.length));
+    return relaxed.length > 0 && Math.min(...relaxed.map((e) => e.violations.length)) < base_count;
 }
