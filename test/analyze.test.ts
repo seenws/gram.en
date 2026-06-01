@@ -227,6 +227,47 @@ test("`her` resolves both as a possessive determiner and an accusative pronoun",
     assert.equal(analyze(g, "the cat chased her").verdict, "grammatical"); // Pron acc reading
 });
 
+// Possessive pronouns stand alone as a whole NP (mine, yours, his, hers, ...).
+const possessive_pronoun_sentences = [
+    "mine barks", "hers barks", "yours barks", "ours bark", "theirs bark",
+    "the cat chased mine", "the cat chased theirs",
+    "the dog is hers", "the dog is mine",
+];
+
+for (const s of possessive_pronoun_sentences) {
+    test(`"${s}" is grammatical`, () => {
+        assert.equal(analyze(g, s).verdict, "grammatical");
+    });
+}
+
+test("possessive pronouns are case-invariant (subject and object alike)", () => {
+    assert.equal(analyze(g, "mine barks").verdict, "grammatical");        // subject
+    assert.equal(analyze(g, "the cat chased mine").verdict, "grammatical"); // object
+});
+
+test("a possessive pronoun's number is open (stands for sg or pl referent)", () => {
+    // the elided head noun's number is unknown, so neither agreement is flagged
+    assert.equal(analyze(g, "mine barks").verdict, "grammatical");
+    assert.equal(analyze(g, "mine bark").verdict, "grammatical");
+});
+
+test("`his`/`its` resolve both as possessive determiner and possessive pronoun", () => {
+    assert.equal(analyze(g, "his dog barks").verdict, "grammatical");  // Det reading
+    assert.equal(analyze(g, "the dog is his").verdict, "grammatical"); // Pron reading
+    assert.equal(analyze(g, "its dog barks").verdict, "grammatical");  // Det reading
+    assert.equal(analyze(g, "the dog is its").verdict, "grammatical"); // Pron reading
+});
+
+test("possessive pronouns are not offered as case repairs for personal pronouns", () => {
+    // distinct lemmas keep them out of nominative-/accusative-pronoun candidates
+    const a = analyze(g, "me like dogs"); // wants "I like dogs", never "mine like dogs"
+    for (const v of a.violations) {
+        for (const fix of v.fixes) {
+            assert.ok(!/\bmine\b/.test(fix), `unexpected possessive in fix: ${fix}`);
+        }
+    }
+});
+
 test('span for "the dog bark" highlights the verb', () => {
     const a = analyze(g, "the dog bark");
     assert.deepEqual(a.violations[0].span, [2, 3]);

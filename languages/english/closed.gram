@@ -41,9 +41,24 @@ they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
 them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
 # `it` and `you` leave <case> unset so they fill subject and object alike; `you`
 # also leaves <num> unset, taking non-3sg agreement in either reading.
-# Future: `you` collapses 2sg/2pl and nom/acc; no possessive/reflexive pronouns yet.
+# Future: `you` collapses 2sg/2pl and nom/acc; no reflexive pronouns yet.
 it     : Pron  <num>=sg  <pers>=3              <vagr>=3sg   <lemma>=pron.3sg.n
 you    : Pron            <pers>=2              <vagr>=n3sg  <lemma>=pron.2
+
+# Possessive pronouns. Unlike the possessive determiners above (my/your/...), these
+# stand alone as a whole noun phrase ("hers barks", "the cat chased theirs"). They
+# leave <case> unset (subject or object) and -- because the number of the elided
+# head noun is unknown -- leave <num>/<vagr> unset too, so both "mine barks" and
+# "mine bark" parse. Their lemmas are distinct from the personal pronouns' so the
+# case-repair strategies never offer e.g. "mine" as a fix for "me". `his`/`its`
+# double as possessive determiners above (two lexicon entries each).
+mine   : Pron  <pers>=3  <lemma>=poss.1sg
+yours  : Pron  <pers>=3  <lemma>=poss.2
+his    : Pron  <pers>=3  <lemma>=poss.3sg.m
+hers   : Pron  <pers>=3  <lemma>=poss.3sg.f
+its    : Pron  <pers>=3  <lemma>=poss.3sg.n
+ours   : Pron  <pers>=3  <lemma>=poss.1pl
+theirs : Pron  <pers>=3  <lemma>=poss.3pl
 
 # Prepositions
 to   : P
