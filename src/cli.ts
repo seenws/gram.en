@@ -49,7 +49,7 @@ function format_report(a: analysis): string {
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages");
+const gram_dir = join(here, "..", "languages", "english");
 const gram_path = join(gram_dir, "en.gram");
 const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
 const grammar = parse_grammar(readFileSync(gram_path, "utf8"), { resolve, filename: "en.gram" });

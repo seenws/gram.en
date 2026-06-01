@@ -108,7 +108,7 @@ function synth_data(n: number): morph_data {
 // --- run --------------------------------------------------------------------
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages");
+const gram_dir = join(here, "..", "languages", "english");
 const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
 const en_src = readFileSync(join(gram_dir, "en.gram"), "utf8");
 const en_flat = flatten_grammar(en_src, resolve);

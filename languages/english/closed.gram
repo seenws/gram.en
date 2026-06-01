@@ -5,19 +5,45 @@
 
 # Determiners            ( `the` is unmarked for number; a/an mark the sound of
 #                          the following noun: consonant vs vowel )
+# New entries are appended after `the`/`a`/`this` deliberately: the fix strategies
+# enumerate Det in declaration order, so keeping the core articles first preserves
+# which repair is offered first under the candidate cap in generate_fixes.
 the   : Det
 a     : Det  <num>=sg  <initial>=cons
 an    : Det  <num>=sg  <initial>=vowel
 this  : Det  <num>=sg
 these : Det  <num>=pl
+that  : Det  <num>=sg
+those : Det  <num>=pl
+
+# Possessive determiners. Modelled as plain number-unmarked Det (like `the`): they
+# combine with singular and plural nouns alike ("my dog", "my dogs").
+# Future: no possessor agreement (his/her/its don't agree with anything here) and no
+# genitive case; `her` doubles as the accusative pronoun below (two lexicon entries).
+my    : Det
+your  : Det
+his   : Det
+her   : Det
+its   : Det
+our   : Det
+their : Det
 
 # Pronouns       num       pers      case        vagr         lemma
 I      : Pron  <num>=sg  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1sg
 me     : Pron  <num>=sg  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1sg
 he     : Pron  <num>=sg  <pers>=3  <case>=nom  <vagr>=3sg   <lemma>=pron.3sg.m
 him    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.m
+she    : Pron  <num>=sg  <pers>=3  <case>=nom  <vagr>=3sg   <lemma>=pron.3sg.f
+her    : Pron  <num>=sg  <pers>=3  <case>=acc  <vagr>=3sg   <lemma>=pron.3sg.f
+we     : Pron  <num>=pl  <pers>=1  <case>=nom  <vagr>=n3sg  <lemma>=pron.1pl
+us     : Pron  <num>=pl  <pers>=1  <case>=acc  <vagr>=n3sg  <lemma>=pron.1pl
 they   : Pron  <num>=pl  <pers>=3  <case>=nom  <vagr>=n3sg  <lemma>=pron.3pl
 them   : Pron  <num>=pl  <pers>=3  <case>=acc  <vagr>=n3sg  <lemma>=pron.3pl
+# `it` and `you` leave <case> unset so they fill subject and object alike; `you`
+# also leaves <num> unset, taking non-3sg agreement in either reading.
+# Future: `you` collapses 2sg/2pl and nom/acc; no possessive/reflexive pronouns yet.
+it     : Pron  <num>=sg  <pers>=3              <vagr>=3sg   <lemma>=pron.3sg.n
+you    : Pron            <pers>=2              <vagr>=n3sg  <lemma>=pron.2
 
 # Prepositions
 to   : P

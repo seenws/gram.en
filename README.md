@@ -215,7 +215,7 @@ Feature declarations act like a load-time type discipline. A typo such as:
 
 is rejected when the grammar loads instead of silently becoming a feature value that never unifies.
 
-`languages/en.gram` is the English fragment. It is organized as a manifest over separate files for closed-class words, clitics, morphology, syntax, and imported lexicon data.
+`languages/english/en.gram` is the English fragment, kept in its own `languages/english/` folder so additional languages don't mix. It is organized as a manifest over separate files for closed-class words, clitics, morphology, syntax, and imported lexicon data.
 
 ---
 

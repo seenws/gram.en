@@ -8,7 +8,7 @@ import { analyze } from "../src/analyze.ts";
 import { build_lex_items } from "../src/parser.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages");
+const gram_dir = join(here, "..", "languages", "english");
 const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
 const g = parse_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), { resolve });
 
@@ -175,6 +175,12 @@ const cases: [string, string, RegExp, string][] = [
     ["me like dogs", "S -> NP VP", /nominative/i, "I like dogs"],
     ["the cat chased I", "VP -> V NP", /accusative/i, "the cat chased me"],
     ["barks the dog", "S -> V NP", /word order/i, "the dog barks"],
+    // expanded pronoun paradigm: nom/acc swaps follow the shared lemma
+    ["us bark", "S -> NP VP", /nominative/i, "we bark"],
+    ["the cat chased she", "VP -> V NP", /accusative/i, "the cat chased her"],
+    ["her barks", "S -> NP VP", /nominative/i, "she barks"],
+    // expanded determiners: the always-first `the` repair stays within the cap
+    ["those dog barks", "NP -> Det N", /determiner-noun/i, "the dog barks"],
 ];
 
 for (const [sentence, rule, msg, fix] of cases) {
@@ -188,6 +194,38 @@ for (const [sentence, rule, msg, fix] of cases) {
         assert.ok(v.fixes.includes(fix), `fixes ${JSON.stringify(v.fixes)} should include "${fix}"`);
     });
 }
+
+// ----- expanded closed-class inventory: determiners & pronouns ----------------
+
+const grammatical_forms = [
+    "she barks", "it barks", "we bark", "you bark",
+    "she chased him", "we chased them",
+    "my dog barks", "that dog barks", "those dogs bark",
+];
+
+for (const s of grammatical_forms) {
+    test(`"${s}" is grammatical`, () => {
+        assert.equal(analyze(g, s).verdict, "grammatical");
+    });
+}
+
+test("case-invariant pronouns fill subject and object alike", () => {
+    // `you` and `it` leave <case> unset, so they parse in either position
+    assert.equal(analyze(g, "you bark").verdict, "grammatical");
+    assert.equal(analyze(g, "the cat chased you").verdict, "grammatical");
+    assert.equal(analyze(g, "it barks").verdict, "grammatical");
+    assert.equal(analyze(g, "the cat chased it").verdict, "grammatical");
+});
+
+test("possessive determiners are number-unmarked (combine with sg and pl nouns)", () => {
+    assert.equal(analyze(g, "my dog barks").verdict, "grammatical");
+    assert.equal(analyze(g, "my dogs bark").verdict, "grammatical");
+});
+
+test("`her` resolves both as a possessive determiner and an accusative pronoun", () => {
+    assert.equal(analyze(g, "her dog barks").verdict, "grammatical");   // Det reading
+    assert.equal(analyze(g, "the cat chased her").verdict, "grammatical"); // Pron acc reading
+});
 
 test('span for "the dog bark" highlights the verb', () => {
     const a = analyze(g, "the dog bark");

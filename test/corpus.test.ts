@@ -7,7 +7,7 @@ import { parse_grammar } from "../src/grammar.ts";
 import { parse_corpus, run_corpus } from "../src/corpus.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages");
+const gram_dir = join(here, "..", "languages", "english");
 const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
 const g = parse_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), { resolve });
 const cases = parse_corpus(readFileSync(join(here, "corpus.txt"), "utf8"));

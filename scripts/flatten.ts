@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
 import { flatten_grammar } from "../src/loader.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages");
+const gram_dir = join(here, "..", "languages", "english");
 const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
 
 const flat = flatten_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), resolve);
