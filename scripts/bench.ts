@@ -183,9 +183,12 @@ for (const [w, note] of [
 
 // 5. Heavy scenario: 10k-word imported lexicon, real analyze() workload ----------
 
-// A resolver that injects an N-word generated noun lexicon for `lexicon.tsv`
-// (every other %include falls through to the real file). Returns the words so
-// the workload can build sentences out of them.
+// A resolver that appends an N-word generated noun lexicon onto the real
+// `lexicon.tsv` (every other %include falls through to the real file). Appending
+// rather than replacing keeps the regular stems that live in lexicon.tsv -- the
+// verbs `bark`/`chase`/`like` behind the workload's "barks"/"chased" sentences --
+// available alongside the generated nouns. Returns the words so the workload can
+// build sentences out of them.
 function big_lexicon(n: number): { resolve: resolver; words: string[] } {
     const rng = make_rng(777);
     const seen = new Set<string>();
@@ -200,7 +203,8 @@ function big_lexicon(n: number): { resolve: resolver; words: string[] } {
         words.push(w);
     }
 
-    const tsv = words.map((w) => `${w}\tN-reg\t<lemma>=${w} <initial>=cons`).join("\n");
+    const synthetic = words.map((w) => `${w}\tN-reg\t<lemma>=${w} <initial>=cons`).join("\n");
+    const tsv = `${resolve("lexicon.tsv")}\n${synthetic}`;
 
     return { resolve: (rel) => (rel === "lexicon.tsv" ? tsv : resolve(rel)), words };
 }

@@ -1,4 +1,126 @@
-# Open-class noun stems, bulk-loaded into %lex Root via `%import lexicon.tsv`.
+# Open-class stems, bulk-loaded into %lex Root via `%import lexicon.tsv`.
 # Columns are TAB-separated:  <stem>  <paradigm>  [<feature>=value ...]
+#
+# Nouns carry <initial>=cons|vowel for a/an article agreement (NP -> Det N).
+# Verbs need only <lemma>; their forms come from the V-reg paradigm in morph.gram.
+#
+# Future: the seed deliberately omits stems the current N-reg/V-reg paradigms
+# misinflect under the boundary-free spelling cascade -- -y plurals (baby ->
+# babies), sibilant plurals/3sg (box -> boxes, watch -> watches), -f/-fe (leaf ->
+# leaves), and irregulars (man, foot, child). Those want dedicated paradigms
+# (N-reg-y, N-reg-es, ...) before their stems can be added.
+
+# --- Nouns: consonant-initial -------------------------------------------------
 dog	N-reg	<lemma>=dog <initial>=cons
 cat	N-reg	<lemma>=cat <initial>=cons
+bark	N-reg	<lemma>=bark <initial>=cons
+bird	N-reg	<lemma>=bird <initial>=cons
+horse	N-reg	<lemma>=horse <initial>=cons
+cow	N-reg	<lemma>=cow <initial>=cons
+pig	N-reg	<lemma>=pig <initial>=cons
+duck	N-reg	<lemma>=duck <initial>=cons
+goat	N-reg	<lemma>=goat <initial>=cons
+table	N-reg	<lemma>=table <initial>=cons
+chair	N-reg	<lemma>=chair <initial>=cons
+book	N-reg	<lemma>=book <initial>=cons
+pen	N-reg	<lemma>=pen <initial>=cons
+cup	N-reg	<lemma>=cup <initial>=cons
+door	N-reg	<lemma>=door <initial>=cons
+house	N-reg	<lemma>=house <initial>=cons
+flower	N-reg	<lemma>=flower <initial>=cons
+star	N-reg	<lemma>=star <initial>=cons
+road	N-reg	<lemma>=road <initial>=cons
+car	N-reg	<lemma>=car <initial>=cons
+train	N-reg	<lemma>=train <initial>=cons
+boat	N-reg	<lemma>=boat <initial>=cons
+ship	N-reg	<lemma>=ship <initial>=cons
+king	N-reg	<lemma>=king <initial>=cons
+queen	N-reg	<lemma>=queen <initial>=cons
+girl	N-reg	<lemma>=girl <initial>=cons
+boy	N-reg	<lemma>=boy <initial>=cons
+friend	N-reg	<lemma>=friend <initial>=cons
+teacher	N-reg	<lemma>=teacher <initial>=cons
+doctor	N-reg	<lemma>=doctor <initial>=cons
+river	N-reg	<lemma>=river <initial>=cons
+window	N-reg	<lemma>=window <initial>=cons
+letter	N-reg	<lemma>=letter <initial>=cons
+bottle	N-reg	<lemma>=bottle <initial>=cons
+clock	N-reg	<lemma>=clock <initial>=cons
+phone	N-reg	<lemma>=phone <initial>=cons
+ball	N-reg	<lemma>=ball <initial>=cons
+hat	N-reg	<lemma>=hat <initial>=cons
+hand	N-reg	<lemma>=hand <initial>=cons
+head	N-reg	<lemma>=head <initial>=cons
+leg	N-reg	<lemma>=leg <initial>=cons
+school	N-reg	<lemma>=school <initial>=cons
+street	N-reg	<lemma>=street <initial>=cons
+cloud	N-reg	<lemma>=cloud <initial>=cons
+stone	N-reg	<lemma>=stone <initial>=cons
+plate	N-reg	<lemma>=plate <initial>=cons
+fork	N-reg	<lemma>=fork <initial>=cons
+spoon	N-reg	<lemma>=spoon <initial>=cons
+
+# --- Nouns: vowel-initial -----------------------------------------------------
+apple	N-reg	<lemma>=apple <initial>=vowel
+egg	N-reg	<lemma>=egg <initial>=vowel
+orange	N-reg	<lemma>=orange <initial>=vowel
+umbrella	N-reg	<lemma>=umbrella <initial>=vowel
+elephant	N-reg	<lemma>=elephant <initial>=vowel
+owl	N-reg	<lemma>=owl <initial>=vowel
+island	N-reg	<lemma>=island <initial>=vowel
+engine	N-reg	<lemma>=engine <initial>=vowel
+actor	N-reg	<lemma>=actor <initial>=vowel
+animal	N-reg	<lemma>=animal <initial>=vowel
+arm	N-reg	<lemma>=arm <initial>=vowel
+ear	N-reg	<lemma>=ear <initial>=vowel
+oven	N-reg	<lemma>=oven <initial>=vowel
+uncle	N-reg	<lemma>=uncle <initial>=vowel
+aunt	N-reg	<lemma>=aunt <initial>=vowel
+onion	N-reg	<lemma>=onion <initial>=vowel
+office	N-reg	<lemma>=office <initial>=vowel
+artist	N-reg	<lemma>=artist <initial>=vowel
+
+# --- Verbs --------------------------------------------------------------------
+# `bark` is also a noun above, so morph_analyze returns both N and V for "bark".
+bark	V-reg	<lemma>=bark
+chase	V-reg	<lemma>=chase
+like	V-reg	<lemma>=like
+walk	V-reg	<lemma>=walk
+talk	V-reg	<lemma>=talk
+jump	V-reg	<lemma>=jump
+help	V-reg	<lemma>=help
+want	V-reg	<lemma>=want
+need	V-reg	<lemma>=need
+work	V-reg	<lemma>=work
+call	V-reg	<lemma>=call
+open	V-reg	<lemma>=open
+close	V-reg	<lemma>=close
+move	V-reg	<lemma>=move
+live	V-reg	<lemma>=live
+love	V-reg	<lemma>=love
+play	V-reg	<lemma>=play
+learn	V-reg	<lemma>=learn
+turn	V-reg	<lemma>=turn
+start	V-reg	<lemma>=start
+look	V-reg	<lemma>=look
+ask	V-reg	<lemma>=ask
+pull	V-reg	<lemma>=pull
+kick	V-reg	<lemma>=kick
+pick	V-reg	<lemma>=pick
+cook	V-reg	<lemma>=cook
+clean	V-reg	<lemma>=clean
+paint	V-reg	<lemma>=paint
+plant	V-reg	<lemma>=plant
+point	V-reg	<lemma>=point
+climb	V-reg	<lemma>=climb
+smell	V-reg	<lemma>=smell
+follow	V-reg	<lemma>=follow
+laugh	V-reg	<lemma>=laugh
+bake	V-reg	<lemma>=bake
+hope	V-reg	<lemma>=hope
+smile	V-reg	<lemma>=smile
+dance	V-reg	<lemma>=dance
+name	V-reg	<lemma>=name
+use	V-reg	<lemma>=use
+enjoy	V-reg	<lemma>=enjoy
+stay	V-reg	<lemma>=stay

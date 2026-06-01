@@ -4,19 +4,18 @@
 %class Vowel : a | e | i | o | u
 %class Cons  : b | c | d | f | g | h | j | k | l | m | n | p | q | r | s | t | v | w | x | y | z
 #
-# N-reg covers regular consonant-initial nouns (dog/dogs, cat/cats,
-# bark/barks-as-noun) and V-reg covers regular present-tense verbs in their
-# bare and 3sg forms (bark/barks, like/likes). `bark` appears under both roots,
-# so morph_analyze returns both N and V analyses for the surface "bark".
+# N-reg covers regular consonant-initial nouns (dog/dogs, cat/cats) and V-reg
+# covers regular present-tense verbs in their bare and 3sg forms (bark/barks,
+# like/likes). Regular open-class noun and verb stems -- including the dual N+V
+# `bark` -- now live in lexicon.tsv, pulled in via `%import lexicon.tsv` from
+# en.gram. The roots below are the ones that must stay next to a paradigm here:
+# an irregular (`child`), a stem the cascade can't fully inflect yet (`try`), and
+# the regular adjectives (a distinct open class, kept out of lexicon.tsv).
 #
-# The regular noun stems (dog, cat) live in lexicon.tsv and are pulled in with
-# `%import lexicon.tsv` from en.gram; the roots below are the ones that need to
-# sit next to a paradigm or an irregular paradigm.
+# `try` is a regular V-reg verb but stays out of the curated lexicon: its 3sg
+# "tries" needs a y->ies rule the boundary-free cascade lacks (it yields "trys"
+# today). See the Future note in lexicon.tsv.
 %lex Root
-    bark  : N-reg            <lemma>=bark  <initial>=cons
-    bark  : V-reg            <lemma>=bark
-    like  : V-reg            <lemma>=like
-    chase : V-reg            <lemma>=chase
     try   : V-reg            <lemma>=try
     child : N-irreg-children <lemma>=child <initial>=cons
     # Regular adjectives: comparative/superlative are productive (see Adj-reg).
