@@ -133,15 +133,14 @@ body {
     line-height: 60px;
 }
 
-.lang {
+.lang-switch {
     display: flex;
     justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
 }
 
-.lang-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+.lang-option {
     padding: 5px 14px;
     border: 1px solid #2b2b33;
     border-radius: 999px;
@@ -150,14 +149,18 @@ body {
     font-family: monospace;
     font-size: 12px;
     letter-spacing: 1px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
 }
 
-.lang-badge::before {
-    content: "";
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background-color: #3aa675;
+.lang-option:hover {
+    color: #e6e6ec;
+    border-color: #3a3a44;
+}
+
+.lang-option.active {
+    color: #e6e6ec;
+    border-color: #3aa675;
 }
 
 /* --- grammar analysis overlay -------------------------------------------- */

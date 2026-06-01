@@ -1,0 +1,159 @@
+# Grammar rules (%include'd from sv.gram)
+
+# A clause is subject + predicate. Crucially there is NO subject-verb agreement
+# equation: Swedish present tense is invariant ("jag/hunden/hundarna skäller").
+# Only the head verb form (finite) and pronoun subject case are constrained.
+S -> NP VP
+    <VP vform> = fin
+    <NP case>  = nom  ! "the subject must be a nominative pronoun"  fix: agree(Pron, case=nom)
+    # Predicate-adjective agreement: a copular VP exposes its predicate
+    # adjective's gender/number as <VP gender>/<VP num> (see VP -> Cop AdjP), so
+    # "huset är stort" concords but "huset är stor" clashes. Ordinary verb VPs
+    # leave these unset, so this is vacuous for them -- there is no subject-verb
+    # agreement in Swedish.
+    <NP gender> = <VP gender>  ! "the predicate adjective must agree with the subject in gender (stor/stort)"  fix: agree(Adj)
+    <NP num>    = <VP num>     ! "the predicate adjective must agree with the subject in number (stor/stora)"   fix: agree(Adj)
+
+# Clause coordination: "hunden skäller och katten skäller".
+S -> S Conj S
+
+# Indefinite article + noun ("en hund", "ett hus") or preposed definite article
+# + noun ("den hunden"). The article agrees with the noun in gender, number, and
+# definiteness; gender is the headline en/ett contrast.
+# The agreement equations are written so the constituent each fix changes sits on
+# the right-hand side: make_violation underlines the right-hand constituent, so
+# the underline lands on the word the offered fix would replace.
+NP -> Art N
+    <N gender> = <Art gender>  ! "en/ett gender agreement (en-words vs ett-words)"     fix: swap(Art)
+    <Art num>  = <N num>       ! "article–noun number agreement"                        fix: swap(Art) | agree(N)
+    <Art def>  = <N def>       ! "definiteness agreement between article and noun"       fix: agree(N) | swap(Art)
+    <NP num>     = <N num>
+    <NP gender>  = <N gender>
+    <NP def>     = <N def>
+
+# Bare noun: licit when definite ("hunden", "hundarna") or indefinite plural
+# ("hundar"); an indefinite singular needs an article. The precomputed `article`
+# feature (req only on indefinite singulars) turns that disjunction into a plain
+# equality -- see the note in sv.gram.
+NP -> N
+    <N article> = opt  ! "an indefinite singular noun needs an article ('en'/'ett')"  fix: insert(Art) | agree(N)
+    <NP num>    = <N num>
+    <NP gender> = <N gender>
+    <NP def>    = <N def>
+
+# Attributive adjective with an article. Two readings concord through one set of
+# equations because strong/weak rides on `def`:
+#   indefinite: "en stor hund" / "ett stort hus"  (indef article, strong adj)
+#   definite:   "den stora hunden"                 (def article, weak adj, def noun)
+# -- the double definiteness Swedish is known for. A strong adjective in a
+# definite phrase ("den stor hunden") clashes on the adjective's def.
+NP -> Art AdjP N
+    <N gender> = <Art gender>     ! "en/ett gender agreement (en-words vs ett-words)"  fix: swap(Art)
+    <Art num>  = <N num>          ! "article–noun number agreement"                     fix: swap(Art) | agree(N)
+    <Art def>  = <N def>          ! "definiteness agreement between article and noun"    fix: agree(N) | swap(Art)
+    <N def>    = <AdjP def>        ! "use the definite (weak) adjective in a definite phrase, indefinite (strong) otherwise"  fix: agree(Adj)
+    <N gender> = <AdjP gender>     ! "adjective gender agreement (stor/stort)"            fix: agree(Adj)
+    <N num>    = <AdjP num>        ! "adjective number agreement (stor/stora)"            fix: agree(Adj)
+    <NP num>      = <N num>
+    <NP gender>   = <N gender>
+    <NP def>      = <N def>
+
+# Bare attributive adjective: indefinite only ("stora hundar"; a singular still
+# needs an article, "en stor hund"). The strong adjective agrees in gender/number.
+NP -> AdjP N
+    <N article>   = opt           ! "an indefinite singular noun needs an article ('en'/'ett')"  fix: insert(Art)
+    <N def>       = indef
+    <AdjP def>    = indef
+    <N gender>    = <AdjP gender>  ! "adjective gender agreement (stor/stort)"  fix: agree(Adj)
+    <N num>       = <AdjP num>     ! "adjective number agreement (stor/stora)"  fix: agree(Adj)
+    <NP num>      = <N num>
+    <NP gender>   = <N gender>
+    <NP def>      = <N def>
+
+# An adjective phrase is an adjective, optionally preceded by a degree word
+# ("mycket stor"). It percolates the adjective's agreement features.
+# Future: stacked adjectives ("en stor grön hund") are not modelled yet.
+AdjP -> Adj
+    <AdjP gender> = <Adj gender>
+    <AdjP num>    = <Adj num>
+    <AdjP def>    = <Adj def>
+AdjP -> Deg Adj
+    <AdjP gender> = <Adj gender>
+    <AdjP num>    = <Adj num>
+    <AdjP def>    = <Adj def>
+
+NP -> Pron
+    <NP num>    = <Pron num>
+    <NP gender> = <Pron gender>
+    <NP case>   = <Pron case>
+
+VP -> V
+    <VP vform> = <V vform>
+
+VP -> V NP
+    <VP vform> = <V vform>
+    <NP case>  = acc  ! "the object must be an accusative pronoun"  fix: agree(Pron, case=acc)
+# A bare/article NP sets no `case`, so it fills subject or object freely; only
+# pronouns clash on case.
+
+# Negation: "inte" follows the finite verb ("hunden skäller inte", "hunden jagar
+# inte katten"). Future: full V2/clause-internal word order is deferred, so only
+# this neutral order is modelled.
+VP -> V Neg
+    <VP vform> = <V vform>
+VP -> V Neg NP
+    <VP vform> = <V vform>
+    <NP case>  = acc  ! "the object must be an accusative pronoun"  fix: agree(Pron, case=acc)
+
+# Perfect auxiliary "har/hade": selects a supine complement ("hunden har skällt",
+# "hunden har jagat katten"). The auxiliary is the finite head, so VP -> AuxP is
+# a finite VP. There is no agreement on the auxiliary (Swedish has none).
+AuxP -> Aux VP
+    <AuxP vform> = fin
+    <VP vform>   = <Aux req>  ! "wrong verb form after the auxiliary (supine expected, e.g. 'skällt')"  fix: agree(V)
+AuxP -> Aux Neg VP
+    <AuxP vform> = fin
+    <VP vform>   = <Aux req>  ! "wrong verb form after the auxiliary (supine expected, e.g. 'skällt')"  fix: agree(V)
+VP -> AuxP
+    <VP vform> = <AuxP vform>
+
+# Copula predication. A predicate adjective is always strong (def=indef) and
+# agrees with the subject in gender/number; the VP carries that agreement up to
+# the clause as <VP gender>/<VP num> (checked in S -> NP VP). A predicate noun
+# phrase ("han är en hund") carries no such agreement -- gender of a predicate
+# nominal is free ("hon är ett barn") -- so those equations are simply absent.
+VP -> Cop AdjP
+    <VP vform>  = fin
+    <AdjP def>  = indef
+    <VP gender> = <AdjP gender>
+    <VP num>    = <AdjP num>
+VP -> Cop Neg AdjP
+    <VP vform>  = fin
+    <AdjP def>  = indef
+    <VP gender> = <AdjP gender>
+    <VP num>    = <AdjP num>
+VP -> Cop NP
+    <VP vform> = fin
+VP -> Cop Neg NP
+    <VP vform> = fin
+
+PP -> P NP
+    <NP case> = acc  ! "the object of a preposition must be accusative"  fix: agree(Pron, case=acc)
+
+# Coordinated noun phrases ("hunden och katten skäller", "jag och du"). Three
+# same-category constituents, distinguished by aliases (l, r) since addressing is
+# positional. "och" makes the whole phrase plural; each conjunct shares the
+# coordinate's case, so "jag och du" is a valid (nominative) subject.
+NP -> l:NP Conj r:NP
+    <NP num> = <Conj num>
+    <l case> = <NP case>
+    <r case> = <NP case>
+
+# Head percolation: the mother shares the head daughter's category symbol, so the
+# parser's env makes it inherit the head's features with no equations needed.
+NP -> NP PP
+VP -> VP PP
+
+# Future: verb-second (V2) word order -- topicalisation and subject-verb
+# inversion ("idag skäller hunden") and the V3-error mal-rule -- is deferred to a
+# later pass. English's clause word-order mal-rule (%mal S -> V NP) lives here.

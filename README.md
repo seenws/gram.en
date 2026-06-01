@@ -217,6 +217,8 @@ is rejected when the grammar loads instead of silently becoming a feature value 
 
 `languages/english/en.gram` is the English fragment, kept in its own `languages/english/` folder so additional languages don't mix. It is organized as a manifest over separate files for closed-class words, clitics, morphology, syntax, and imported lexicon data.
 
+The engine is language-neutral on three axes — the start symbol (`%start`), the tokenizer (`%tokenizer`/`%clitic`), and the repair strategies (`agree`/`swap`/`insert`) — all declared in the grammar rather than wired into the engine. `languages/swedish/sv.gram` is a second fragment that proves this out: it adds two genders (en/ett) with adjective agreement, suffixal and double definiteness (`hund` → `hunden` → `hundarna`; `den stora hunden`), and — where Swedish is simpler — no present-tense subject–verb agreement, all without a line of engine code. Each language has its own regression corpus (`test/corpus.txt`, `test/corpus.sv.txt`) and is selectable on the CLI (`--lang sv`) and in the browser UI. Russian and Japanese are the planned next fragments.
+
 ---
 
 ## Performance

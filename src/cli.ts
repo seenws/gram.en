@@ -1,7 +1,4 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import { parse_grammar } from "./grammar.ts";
+import { load_grammar } from "./languages.ts";
 import { analyze, type analysis } from "./analyze.ts";
 
 function format_report(a: analysis): string {
@@ -48,20 +45,22 @@ function format_report(a: analysis): string {
     }
 }
 
-const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages", "english");
-const gram_path = join(gram_dir, "en.gram");
-const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
-const grammar = parse_grammar(readFileSync(gram_path, "utf8"), { resolve, filename: "en.gram" });
-
 const args = process.argv.slice(2);
 const trace_on = args.includes("--trace");
-const sentence = args.filter((a) => a !== "--trace").join(" ").trim();
+
+// --lang <code> selects the language (default en); everything else is the sentence.
+const lang_idx = args.indexOf("--lang");
+const lang = lang_idx >= 0 ? args[lang_idx + 1] : "en";
+const skip = new Set<number>();
+if (lang_idx >= 0) skip.add(lang_idx).add(lang_idx + 1);
+const sentence = args.filter((a, i) => a !== "--trace" && !skip.has(i)).join(" ").trim();
 
 if (!sentence) {
-    console.error('usage: node --experimental-strip-types src/cli.ts [--trace] "the dog bark"');
+    console.error('usage: node --experimental-strip-types src/cli.ts [--lang en|sv] [--trace] "the dog bark"');
     process.exit(1);
 }
+
+const grammar = load_grammar(lang);
 
 // In --trace mode, narrate the morphology and the Earley chart to stderr so the
 // verdict on stdout stays clean and pipeable.

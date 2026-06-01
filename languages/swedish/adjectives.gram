@@ -1,0 +1,18 @@
+# Adjective closed-class bits (%include'd from sv.gram).
+#
+# Regular adjectives (stor, grön, ...) inflect via the Adj-reg paradigm in
+# morph.gram (gender/number/definiteness agreement). This file holds what
+# morphology can't derive: degree modifiers and indeclinable adjectives.
+
+# Degree modifiers ("en mycket stor hund", "ett för stort hus").
+mycket : Deg
+för    : Deg
+så     : Deg
+
+# "bra" (good) is indeclinable: it never changes for gender/number/definiteness
+# ("en bra hund", "ett bra hus", "de bra hundarna"). Leaving gender/num/strong
+# unset lets it unify with any noun. Its comparison is suppletive (bättre/bäst).
+# Future: regular comparative/superlative (-are/-ast) is not modelled yet.
+bra    : Adj  <degree>=pos
+bättre : Adj  <degree>=comp
+bäst   : Adj  <degree>=sup

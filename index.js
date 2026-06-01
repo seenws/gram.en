@@ -1,10 +1,29 @@
-const greetings = [
-    "the dog barks",
-    "the cat chased the dog",
-    "an dog barks",
-    "the dogs barks",
-    "me like dogs"
-];
+// Per-language cycling placeholder examples (a mix of grammatical and
+// ungrammatical sentences). The masthead "gram.en" is fixed -- "en" is the
+// engine, not the language -- so it does not change with the selection.
+const langs = {
+    en: {
+        greetings: [
+            "the dog barks",
+            "the cat chased the dog",
+            "an dog barks",
+            "the dogs barks",
+            "me like dogs"
+        ]
+    },
+    sv: {
+        greetings: [
+            "hunden skäller",
+            "den stora hunden skäller",
+            "en hus",
+            "ett stor hus",
+            "katten jagade jag"
+        ]
+    }
+};
+
+let lang = "en";
+let greetings = langs[lang].greetings;
 let idx = 0;
 
 const wrapper = document.querySelector(".textarea-wrapper");
@@ -14,6 +33,7 @@ const counter_el = document.querySelector(".char-counter");
 const highlights = document.querySelector(".highlights");
 const popover = document.querySelector(".popover");
 const status_el = document.querySelector(".status");
+const lang_buttons = document.querySelectorAll(".lang-option");
 
 const cycle_interval = 4000;
 const capacity = 50;
@@ -118,7 +138,7 @@ function run_analysis() {
         return;
     }
 
-    const result = window.GrammarEngine.check(text);
+    const result = window.GrammarEngine.check(text, lang);
     current_violations = result.violations || [];
     render_highlights(text, current_violations);
 
@@ -209,3 +229,23 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") close_popover();
 });
+
+function set_language(next) {
+    if (!langs[next] || next === lang) return;
+
+    lang = next;
+    greetings = langs[lang].greetings;
+    idx = 0;
+
+    lang_buttons.forEach((btn) => btn.classList.toggle("active", btn.dataset.lang === lang));
+
+    // Refresh the placeholder if the field is empty, otherwise re-analyse in the
+    // new language so existing text is re-checked against the switched grammar.
+    if (!textfield.value.trim()) {
+        placeholder.textContent = greetings[idx];
+    } else {
+        run_analysis();
+    }
+}
+
+lang_buttons.forEach((btn) => btn.addEventListener("click", () => set_language(btn.dataset.lang)));

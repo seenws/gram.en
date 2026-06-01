@@ -6,8 +6,8 @@
 # *.tsv file are invisible to the browser until you rebuild and hard-refresh.
 #
 # Two steps:
-#   1. flatten  -> languages/english/en.flat.gram   (resolves %include/%import)
-#   2. esbuild  -> dist/engine.js                    (bundles src/browser.ts)
+#   1. flatten  -> languages/*/*.flat.gram           (resolves %include/%import)
+#   2. esbuild  -> dist/engine.js                    (bundles src/browser.ts, all langs)
 #
 # `npm run build` is the intended entry point, but it fails in this WSL setup (npm
 # runs through Windows cmd, which rejects the \\wsl.localhost working directory),
@@ -30,7 +30,7 @@ esac
 esbuild="node_modules/@esbuild/linux-x64/bin/esbuild"
 [ -x "$esbuild" ] || esbuild="node_modules/.bin/esbuild"
 
-echo "==> [1/2] flatten grammar  (languages/english/en.flat.gram)"
+echo "==> [1/2] flatten grammars (languages/*/*.flat.gram)"
 "$NODE" --experimental-strip-types "$flatten_script"
 
 echo "==> [2/2] bundle           (dist/engine.js)"

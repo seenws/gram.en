@@ -1,0 +1,58 @@
+# Swedish grammar -- manifest.
+#
+# Second language for the engine, mirroring the English fragment's structure
+# (see languages/english/en.gram) but exercising new ground: two genders
+# (en/utrum vs ett/neutrum) with adjective agreement, suffixal + double
+# definiteness (hund -> hunden -> hundarna; den stora hunden), and -- where
+# Swedish is simpler -- no present-tense subject-verb agreement.
+#
+# Syntax of this DSL is documented in en.gram; the same parser serves both.
+#
+# Features
+# --------
+#   num     = sg | pl            number
+#   gender  = utr | neu          common (en-words) vs neuter (ett-words)
+#   def     = indef | def        definiteness (suffixal on nouns)
+#   case    = nom | acc          pronoun case (subject vs object)
+#   article = opt | req          whether a bare noun needs an article (see note)
+#   degree  = pos | comp | sup   adjective comparison
+#   tense   = pres | past        finite tense
+#   vform   = bare | fin | sup   verb form (infinitive / finite / supine)
+#   req     = bare | sup         complement form an auxiliary selects
+#
+# Note on `article`: Swedish bare nouns are grammatical when definite ("hunden",
+# "hundarna") or indefinite plural ("hundar"), but an indefinite *singular* count
+# noun needs an article ("en hund", not "*hund"). That licensing condition is a
+# disjunction (def=def OR num=pl) which atomic unification can't state, so each
+# noun form carries a precomputed atomic `article` (req only on indefinite
+# singulars) and NP -> N is a plain equality check. Same device as English `vagr`.
+# Future: revisit when a disjunctive value type exists.
+#
+# Note on adjective strong/weak: Swedish adjectives have a strong (indefinite)
+# and a weak (definite) declension. Rather than a separate feature, the contrast
+# rides on `def`: strong forms carry def=indef, the weak form def=def. Adjective
+# definiteness then unifies with the article's and noun's, so "en stor hund"
+# (all indef) and "den stora hunden" (all def) concord, while "den stor hunden"
+# (strong adjective in a definite phrase) clashes.
+
+%feature num     : sg | pl
+%feature gender  : utr | neu
+%feature def     : indef | def
+%feature case    : nom | acc
+%feature article : opt | req
+%feature degree  : pos | comp | sup
+%feature tense   : pres | past
+%feature vform   : bare | fin | sup
+%feature req     : bare | sup
+%feature lemma   : *
+
+# Swedish parses from S and splits on whitespace. No clitics: negation "inte" is
+# a free word, and there are no English-style contractions.
+%start S
+%tokenizer whitespace
+
+%include closed.gram
+%include adjectives.gram
+%include morph.gram
+%import  lexicon.tsv
+%include syntax.gram

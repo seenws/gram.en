@@ -1,19 +1,22 @@
-// Pre-build step: resolve %include / %import in en.gram and write a single
-// self-contained en.flat.gram. The browser bundle imports the flattened file
-// (esbuild's .gram text loader inlines it) so the runtime never needs a file
-// resolver -- all file access happens here, at build time, on Node.
+// Pre-build step: resolve %include / %import in each language's manifest and
+// write a single self-contained <code>.flat.gram per language. The browser bundle
+// imports the flattened files (esbuild's .gram text loader inlines them) so the
+// runtime never needs a file resolver -- all file access happens here, at build
+// time, on Node. Pass `--lang <code>` to flatten just one; default flattens all.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { flatten_grammar } from "../src/loader.ts";
+import { LANGUAGES, lang_dir, lang_resolver, lang_spec_of } from "../src/languages.ts";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const gram_dir = join(here, "..", "languages", "english");
-const resolve = (rel: string): string => readFileSync(join(gram_dir, rel), "utf8");
+const lang_idx = process.argv.indexOf("--lang");
+const specs = lang_idx >= 0 ? [lang_spec_of(process.argv[lang_idx + 1])] : LANGUAGES;
 
-const flat = flatten_grammar(readFileSync(join(gram_dir, "en.gram"), "utf8"), resolve);
-const out = join(gram_dir, "en.flat.gram");
+for (const spec of specs) {
+    const dir = lang_dir(spec);
+    const flat = flatten_grammar(readFileSync(join(dir, spec.manifest), "utf8"), lang_resolver(spec));
+    const out = join(dir, spec.manifest.replace(/\.gram$/, ".flat.gram"));
 
-writeFileSync(out, flat + "\n");
-console.log(`wrote ${out} (${flat.split("\n").length} lines)`);
+    writeFileSync(out, flat + "\n");
+    console.log(`wrote ${out} (${flat.split("\n").length} lines)`);
+}

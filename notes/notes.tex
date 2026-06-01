@@ -441,7 +441,10 @@ incompatible values.
 The formal model above is crisp: either a string belongs to $L(G)$ or it does not. Natural
 language is not always crisp. Speakers make graded judgments using labels like acceptable,
 awkward, questionable, or unacceptable. This is one reason modern grammar correction often uses
-statistical and neural models: those models are good at broad coverage and graded preferences.
+statistical and neural models: those models are much better at broad coverage and graded preferences.
+Take for instance the sentence \texttt{A big house barks}. While technically grammatically correct,
+the engine has no way of grading whether or not it makes sense for a house to bark, while a human
+would definitely question where you bought it.
 
 The more dangerous issue for a rule engine is coverage. A hand-written grammar $G$ defines only
 its implemented fragment. Therefore

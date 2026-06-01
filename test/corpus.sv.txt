@@ -1,0 +1,98 @@
+# Regression corpus for the Swedish fragment.
+#
+# Format:  <label> | <sentence> [| <detail>]
+#   ok      -> grammatical
+#   bad     -> ungrammatical; detail = substring the violation message/rule must contain
+#   none    -> no-analysis (out of coverage, NOT a claim of ungrammaticality)
+#   unknown -> unknown-word; detail = comma-separated expected unknown words
+#
+# This is the correctness net: grammar/lexicon changes must keep every line green.
+
+# --- grammatical: core clauses, suffixal definiteness -------------------------
+ok | hunden skäller
+ok | en hund skäller
+ok | hundar skäller
+ok | hundarna skäller
+ok | katten jagade hunden
+ok | katterna skäller
+ok | flickan skäller
+ok | flickorna skäller
+ok | barnet skäller
+ok | djuren skäller
+ok | huset är stort
+ok | äpplet är grönt
+
+# --- grammatical: attributive adjectives + double definiteness ----------------
+ok | en stor hund skäller
+ok | ett stort hus är fint
+ok | den stora hunden skäller
+ok | det stora huset är fint
+ok | de stora hundarna skäller
+ok | stora hundar skäller
+ok | en mycket stor hund skäller
+
+# --- grammatical: predicative agreement (gender + number) ---------------------
+ok | hunden är stor
+ok | huset är stort
+ok | husen är stora
+ok | hunden är bra
+ok | en bra hund skäller
+ok | jag är stor
+
+# --- grammatical: pronouns, case, coordination --------------------------------
+ok | jag skäller
+ok | jag jagar honom
+ok | hunden och katten skäller
+ok | jag och du skäller
+ok | katten jagade mig och dig
+ok | han är en hund
+ok | hon är ett barn
+
+# --- grammatical: negation, perfect, prepositions -----------------------------
+ok | hunden skäller inte
+ok | hunden är inte stor
+ok | hunden jagade inte katten
+ok | hunden har skällt
+ok | hunden har jagat katten
+ok | hunden skäller i skogen
+ok | hunden skäller med honom
+
+# --- ungrammatical: en/ett gender agreement -----------------------------------
+bad | en hus skäller          | gender
+bad | ett hund skäller        | gender
+bad | ett stor hus skäller    | adjective gender
+bad | en stort hund skäller   | adjective gender
+
+# --- ungrammatical: definiteness / double definiteness ------------------------
+bad | en hunden skäller       | definiteness
+bad | den hund skäller        | definiteness
+bad | den stor hunden skäller | weak
+
+# --- ungrammatical: an indefinite singular needs an article -------------------
+bad | hund skäller            | article
+bad | stor hund skäller       | article
+
+# --- ungrammatical: number agreement ------------------------------------------
+bad | en hundar skäller       | number
+
+# --- ungrammatical: predicate-adjective agreement -----------------------------
+bad | huset är stor           | predicate
+bad | hunden är stort         | predicate
+bad | jag är stort            | predicate
+bad | hundarna är stor        | number
+
+# --- ungrammatical: pronoun case ----------------------------------------------
+bad | mig skäller             | nominative
+bad | katten jagade jag       | accusative
+bad | hunden skäller med han  | accusative
+
+# --- ungrammatical: wrong verb form after the auxiliary -----------------------
+bad | hunden har skäller      | verb form
+
+# --- out of coverage (no analysis, not ungrammatical) -------------------------
+none | i skogen
+none | hunden hunden
+
+# --- unknown words ------------------------------------------------------------
+unknown | glorp skäller       | glorp
+unknown | hunden xyz          | xyz

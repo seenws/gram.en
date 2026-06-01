@@ -1,0 +1,69 @@
+# Open-class stems, bulk-loaded into %lex Root via `%import lexicon.tsv`.
+# Columns are TAB-separated:  <stem>  <paradigm>  [<feature>=value ...]
+#
+# Nouns pick a declension paradigm (gender + plural class); verbs pick a
+# conjugation. Stems are stored in citation form (the indefinite singular for
+# nouns, the present-stem for verbs); the paradigm + spelling cascade derive the
+# rest. The seed deliberately omits stems the current paradigms misinflect under
+# the boundary-free cascade -- consonant-doubling (rum -> rummet), umlaut plurals
+# (bok -> böcker, stad -> städer), t-assimilating adjectives (röd -> rött), and
+# e-stem -ar nouns (pojke -> pojkar). Those want dedicated paradigms first.
+
+# --- Nouns: en-words, -ar plural (declension 2) -------------------------------
+hund	N-en-ar	<lemma>=hund
+häst	N-en-ar	<lemma>=häst
+bil	N-en-ar	<lemma>=bil
+stol	N-en-ar	<lemma>=stol
+dag	N-en-ar	<lemma>=dag
+arm	N-en-ar	<lemma>=arm
+säng	N-en-ar	<lemma>=säng
+skog	N-en-ar	<lemma>=skog
+vägg	N-en-ar	<lemma>=vägg
+
+# --- Nouns: en-words, -er plural (declension 3) -------------------------------
+katt	N-en-er	<lemma>=katt
+sak	N-en-er	<lemma>=sak
+fest	N-en-er	<lemma>=fest
+gäst	N-en-er	<lemma>=gäst
+färg	N-en-er	<lemma>=färg
+film	N-en-er	<lemma>=film
+
+# --- Nouns: en-words ending in -a, -or plural (declension 1) ------------------
+flicka	N-en-or	<lemma>=flicka
+gata	N-en-or	<lemma>=gata
+klocka	N-en-or	<lemma>=klocka
+flaska	N-en-or	<lemma>=flaska
+kvinna	N-en-or	<lemma>=kvinna
+skola	N-en-or	<lemma>=skola
+
+# --- Nouns: ett-words, null plural (declension 5) -----------------------------
+hus	N-ett-noll	<lemma>=hus
+bord	N-ett-noll	<lemma>=bord
+barn	N-ett-noll	<lemma>=barn
+djur	N-ett-noll	<lemma>=djur
+år	N-ett-noll	<lemma>=år
+brev	N-ett-noll	<lemma>=brev
+golv	N-ett-noll	<lemma>=golv
+
+# --- Nouns: ett-words ending in -e, -n plural (declension 4) ------------------
+äpple	N-ett-n	<lemma>=äpple
+ställe	N-ett-n	<lemma>=ställe
+
+# --- Verbs: group 1 (-ar) -----------------------------------------------------
+jaga	V-ar	<lemma>=jaga
+kasta	V-ar	<lemma>=kasta
+älska	V-ar	<lemma>=älska
+prata	V-ar	<lemma>=prata
+titta	V-ar	<lemma>=titta
+spela	V-ar	<lemma>=spela
+öppna	V-ar	<lemma>=öppna
+måla	V-ar	<lemma>=måla
+fråga	V-ar	<lemma>=fråga
+laga	V-ar	<lemma>=laga
+
+# --- Verbs: group 2 (-er, -de past) -------------------------------------------
+skäll	V-er	<lemma>=skälla
+stäng	V-er	<lemma>=stänga
+följ	V-er	<lemma>=följa
+ring	V-er	<lemma>=ringa
+bygg	V-er	<lemma>=bygga

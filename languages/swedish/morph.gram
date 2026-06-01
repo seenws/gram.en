@@ -1,0 +1,112 @@
+# Open-class morphology (%include'd from sv.gram)
+#
+# Character classes for rewrite-rule contexts. Swedish adds å ä ö as vowels.
+%class Vowel : a | e | i | o | u | y | å | ä | ö
+%class Cons  : b | c | d | f | g | h | j | k | l | m | n | p | q | r | s | t | v | w | x | z
+
+# Roots that must sit next to a paradigm: the regular adjectives (a distinct open
+# class, kept out of lexicon.tsv exactly as in English). Bulk noun and verb stems
+# live in lexicon.tsv (pulled in via `%import lexicon.tsv` from sv.gram).
+#
+# Only adjectives whose neuter is a clean stem+t and plural a clean stem+a are
+# seeded. Future: t-assimilating stems (röd -> rött, glad -> glatt, ny -> nytt)
+# and irregular "liten/litet/lilla/små" want dedicated paradigms first.
+%lex Root
+    stor  : Adj-reg  <lemma>=stor
+    snäll : Adj-reg  <lemma>=snäll
+    grön  : Adj-reg  <lemma>=grön
+    fin   : Adj-reg  <lemma>=fin
+    varm  : Adj-reg  <lemma>=varm
+    kall  : Adj-reg  <lemma>=kall
+    gul   : Adj-reg  <lemma>=gul
+    tjock : Adj-reg  <lemma>=tjock
+    stark : Adj-reg  <lemma>=stark
+    mörk  : Adj-reg  <lemma>=mörk
+    ljus  : Adj-reg  <lemma>=ljus
+
+# --- Noun declensions ---------------------------------------------------------
+# Each paradigm is the 4-cell number x definiteness grid. `article`=req marks the
+# one cell (indefinite singular) that cannot stand without a preposed article;
+# every other cell is `article`=opt (bare nouns "hunden"/"hundar"/"hundarna" are
+# fine). See the note in sv.gram.
+
+# Declension 2: en-words, -ar plural (hund/hunden/hundar/hundarna). The common
+# consonant-final pattern; all suffixes concatenate cleanly (no spelling rule).
+%lex N-en-ar : N
+    +N+Indef+Sg :      <gender>=utr <num>=sg <def>=indef <article>=req
+    +N+Def+Sg   : en   <gender>=utr <num>=sg <def>=def   <article>=opt
+    +N+Indef+Pl : ar   <gender>=utr <num>=pl <def>=indef <article>=opt
+    +N+Def+Pl   : arna <gender>=utr <num>=pl <def>=def   <article>=opt
+
+# Declension 3: en-words, -er plural (katt/katten/katter/katterna).
+%lex N-en-er : N
+    +N+Indef+Sg :      <gender>=utr <num>=sg <def>=indef <article>=req
+    +N+Def+Sg   : en   <gender>=utr <num>=sg <def>=def   <article>=opt
+    +N+Indef+Pl : er   <gender>=utr <num>=pl <def>=indef <article>=opt
+    +N+Def+Pl   : erna <gender>=utr <num>=pl <def>=def   <article>=opt
+
+# Declension 1: en-words ending in -a, -or plural (flicka/flickan/flickor/
+# flickorna). The stem-final -a drops before the vowel-initial -or/-orna suffix
+# (flicka+or -> flickor), handled by the a:0 spelling rule below -- the part that
+# genuinely exercises the morphology cascade.
+%lex N-en-or : N
+    +N+Indef+Sg :      <gender>=utr <num>=sg <def>=indef <article>=req
+    +N+Def+Sg   : n    <gender>=utr <num>=sg <def>=def   <article>=opt
+    +N+Indef+Pl : or   <gender>=utr <num>=pl <def>=indef <article>=opt
+    +N+Def+Pl   : orna <gender>=utr <num>=pl <def>=def   <article>=opt
+
+# Declension 5: ett-words, null plural (hus/huset/hus/husen). Indefinite singular
+# and plural are syncretic ("ett hus", "flera hus").
+%lex N-ett-noll : N
+    +N+Indef+Sg :      <gender>=neu <num>=sg <def>=indef <article>=req
+    +N+Def+Sg   : et   <gender>=neu <num>=sg <def>=def   <article>=opt
+    +N+Indef+Pl :      <gender>=neu <num>=pl <def>=indef <article>=opt
+    +N+Def+Pl   : en   <gender>=neu <num>=pl <def>=def   <article>=opt
+
+# Declension 4: ett-words ending in a vowel, -n plural (äpple/äpplet/äpplen/
+# äpplena). All suffixes concatenate cleanly onto the -e stem.
+%lex N-ett-n : N
+    +N+Indef+Sg :      <gender>=neu <num>=sg <def>=indef <article>=req
+    +N+Def+Sg   : t    <gender>=neu <num>=sg <def>=def   <article>=opt
+    +N+Indef+Pl : n    <gender>=neu <num>=pl <def>=indef <article>=opt
+    +N+Def+Pl   : na   <gender>=neu <num>=pl <def>=def   <article>=opt
+
+# --- Adjective declension -----------------------------------------------------
+# Strong (def=indef) agrees with the noun's gender/number; weak (def=def) is an
+# invariant -a that leaves gender/number open. "stora" is produced twice (strong
+# plural and weak) -- the licit ambiguity of "stora hundar" vs "den stora
+# hunden". Encoding strong/weak as `def` lets one definiteness equation concord
+# article, adjective, and noun (see the note in sv.gram).
+%lex Adj-reg : Adj
+    +Adj+Utr+Sg :    <gender>=utr <num>=sg <def>=indef <degree>=pos   # stor
+    +Adj+Neu+Sg : t  <gender>=neu <num>=sg <def>=indef <degree>=pos   # stort
+    +Adj+Pl     : a              <num>=pl  <def>=indef <degree>=pos   # stora (indef pl)
+    +Adj+Weak   : a                        <def>=def   <degree>=pos   # stora (definite)
+
+# --- Verb conjugations --------------------------------------------------------
+# Swedish present tense does NOT agree with the subject, so verb forms carry no
+# person/number features at all -- S -> NP VP has no agreement equation.
+
+# Group 1: -ar verbs, stems ending in -a (kasta/kastar/kastade/kastat). Fully
+# productive, the Swedish counterpart of English V-reg.
+%lex V-ar : V
+    +V+Inf  :     <vform>=bare                  # kasta
+    +V+Pres : r   <vform>=fin  <tense>=pres      # kastar
+    +V+Past : de  <vform>=fin  <tense>=past      # kastade
+    +V+Sup  : t   <vform>=sup  <tense>=past      # kastat (efter "har")
+
+# Group 2: -er verbs, consonant-final stems taking -de past (skäll/skäller/
+# skällde/skällt). Future: voiceless-stem -te verbs (köpa -> köpte) and present-
+# tense-bare -r/-vowel stems (höra -> hör) need their own paradigms.
+%lex V-er : V
+    +V+Inf  : a   <vform>=bare                  # skälla
+    +V+Pres : er  <vform>=fin  <tense>=pres      # skäller
+    +V+Past : de  <vform>=fin  <tense>=past      # skällde
+    +V+Sup  : t   <vform>=sup  <tense>=past      # skällt
+
+# Spelling rule: drop a stem-final -a before a vowel-initial suffix
+# (flicka+or -> flickor, flicka+orna -> flickorna). Mirrors English's e:0; same
+# trade-off -- the context is linguistically wide (any vowel, not specifically a
+# suffix boundary), safe only because the lexicon filters the over-generation.
+# Future: make it boundary-sensitive once a morpheme boundary is on the tape.
+%rule a:0 => _ Vowel

@@ -1,0 +1,55 @@
+# Closed-class lexicon (%include'd from sv.gram)
+#
+# Articles, pronouns, prepositions, conjunctions, copula, negation, auxiliaries.
+
+# Articles. Swedish marks indefiniteness with a preposed article that agrees in
+# gender (en/ett); definiteness is normally suffixal on the noun (hunden), but a
+# *preposed* definite article (den/det/de) reappears before an adjective -- the
+# "double definiteness" of "den stora hunden". Both kinds are Art, separated by
+# their <def> value, so NP -> Art N / NP -> Art AdjP N select the right one.
+en  : Art  <gender>=utr  <num>=sg  <def>=indef
+ett : Art  <gender>=neu  <num>=sg  <def>=indef
+den : Art  <gender>=utr  <num>=sg  <def>=def
+det : Art  <gender>=neu  <num>=sg  <def>=def
+de  : Art            <num>=pl  <def>=def
+
+# Pronouns       num       case        gender        lemma
+# Personal pronouns denote people, which are common-gender (utrum), so a singular
+# predicate adjective takes the en-form: "jag är stor", not "*jag är stort".
+jag   : Pron  <num>=sg  <case>=nom  <gender>=utr   <lemma>=pron.1sg
+mig   : Pron  <num>=sg  <case>=acc  <gender>=utr   <lemma>=pron.1sg
+du    : Pron  <num>=sg  <case>=nom  <gender>=utr   <lemma>=pron.2sg
+dig   : Pron  <num>=sg  <case>=acc  <gender>=utr   <lemma>=pron.2sg
+han   : Pron  <num>=sg  <case>=nom  <gender>=utr   <lemma>=pron.3sg.m
+honom : Pron  <num>=sg  <case>=acc  <gender>=utr   <lemma>=pron.3sg.m
+hon   : Pron  <num>=sg  <case>=nom  <gender>=utr   <lemma>=pron.3sg.f
+henne : Pron  <num>=sg  <case>=acc  <gender>=utr   <lemma>=pron.3sg.f
+vi    : Pron  <num>=pl  <case>=nom                 <lemma>=pron.1pl
+oss   : Pron  <num>=pl  <case>=acc                 <lemma>=pron.1pl
+ni    : Pron  <num>=pl  <case>=nom                 <lemma>=pron.2pl
+er    : Pron  <num>=pl  <case>=acc                 <lemma>=pron.2pl
+# `de`/`dem` are the 3pl subject/object pronouns; `de` doubles as the definite
+# plural article above (two lexicon entries, like English `her`).
+de    : Pron  <num>=pl  <case>=nom                 <lemma>=pron.3pl
+dem   : Pron  <num>=pl  <case>=acc                 <lemma>=pron.3pl
+
+# Copula (invariant for person/number, like all Swedish present verbs).
+är  : Cop  <tense>=pres  <lemma>=vara
+var : Cop  <tense>=past  <lemma>=vara
+
+# Negation: a free adverb-like word ("hunden skäller inte"), not a clitic.
+inte : Neg  <lemma>=inte
+
+# Perfect auxiliary "ha": selects a supine complement ("har skällt").
+har  : Aux  <req>=sup  <tense>=pres  <lemma>=ha
+hade : Aux  <req>=sup  <tense>=past  <lemma>=ha
+
+# Prepositions
+i   : P
+på  : P
+med : P
+
+# Coordinating conjunctions. "och" makes a coordinated NP plural; "eller" leaves
+# number open (mirrors English and/or).
+och   : Conj  <num>=pl
+eller : Conj
