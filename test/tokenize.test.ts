@@ -90,3 +90,11 @@ test("Unicode letters (accented Latin, Cyrillic) are kept as word characters", (
     assert.deepEqual(plain("собака").map((t) => t.text), ["собака"]);
     assert.deepEqual(plain("förälder").map((t) => t.text), ["förälder"]);
 });
+
+test("astral-plane letters are trimmed as whole code points, not surrogate halves", () => {
+    const plain = whitespace_tokenizer();
+    // 𐌰 (Gothic ahsa, U+10330) is a letter outside the BMP: it must survive
+    assert.deepEqual(plain("𐌰𐌱").map((t) => t.text), ["𐌰𐌱"]);
+    // non-letter astral chars (emoji) trim away cleanly around a word
+    assert.deepEqual(plain("🦴dog🦴").map((t) => t.text), ["dog"]);
+});

@@ -28,6 +28,24 @@ function split_clitics(text: string, start: number, end: number, clitics: string
     return [{ text: text.slice(start, end), start, end }];
 }
 
+// Full code point starting at i / ending just before i, so surrogate pairs
+// (astral-plane letters like 𐌰) are tested whole rather than as lone halves.
+function cp_at(text: string, i: number): string {
+    return String.fromCodePoint(text.codePointAt(i)!);
+}
+
+function cp_before(text: string, i: number): string {
+    const lo = text.charCodeAt(i - 1);
+
+    if (lo >= 0xdc00 && lo <= 0xdfff && i >= 2) {
+        const hi = text.charCodeAt(i - 2);
+
+        if (hi >= 0xd800 && hi <= 0xdbff) return text.slice(i - 2, i);
+    }
+
+    return text[i - 1];
+}
+
 function whitespace_spans(text: string, clitics: string[]): token[] {
     const out: token[] = [];
     const re = /\S+/g;
@@ -37,8 +55,8 @@ function whitespace_spans(text: string, clitics: string[]): token[] {
         let s = m.index;
         let e = m.index + m[0].length;
 
-        while (s < e && !ALNUM.test(text[s])) s++;
-        while (e > s && !ALNUM.test(text[e - 1])) e--;
+        while (s < e && !ALNUM.test(cp_at(text, s))) s += cp_at(text, s).length;
+        while (e > s && !ALNUM.test(cp_before(text, e))) e -= cp_before(text, e).length;
 
         if (e > s) {
             for (const tok of split_clitics(text, s, e, clitics)) out.push(tok);

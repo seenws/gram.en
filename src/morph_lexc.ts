@@ -317,6 +317,15 @@ export class lexc_error extends Error {
     }
 }
 
+// Input tokens are lowercased before morphology lookup (see morph_analyze), so
+// a stem or suffix containing uppercase can never match anything. Catch the
+// dead entry at load time instead of letting it silently never fire.
+function check_lowercase(s: string, what: string, ln: number): void {
+    if (s !== s.toLowerCase()) {
+        throw new lexc_error(ln, `${what} '${s}' contains uppercase; input is lowercased before matching, write it in lowercase`);
+    }
+}
+
 const FEATURE_RE = /<([^>]*)>\s*=\s*(\S+)/g;
 
 function parse_features(text: string): feature_struct {
@@ -437,6 +446,7 @@ export function parse_morph_data(text: string): morph_data {
 
                 const surface = naked === "0" ? "" : naked;
 
+                check_lowercase(surface, "override surface", ln);
                 cur.last_root.overrides.set(head_str, { tag: head_str, surface, feats });
             } else {
                 if (error !== undefined) {
@@ -447,6 +457,8 @@ export function parse_morph_data(text: string): morph_data {
                 const paradigm_name = naked.trim();
 
                 if (!paradigm_name) throw new lexc_error(ln, `root entry missing paradigm name: ${trimmed}`);
+
+                check_lowercase(head_str, "stem", ln);
 
                 const r: root_entry = {
                     surface: head_str,
@@ -464,6 +476,7 @@ export function parse_morph_data(text: string): morph_data {
             // naked is the surface suffix (possibly empty or '0')
             const surface = naked === "0" ? "" : naked;
 
+            check_lowercase(surface, "surface suffix", ln);
             cur.p.entries.push({ tag: head_str, surface, feats, error });
         }
     }

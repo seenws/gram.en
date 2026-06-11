@@ -70,7 +70,13 @@ function cycle_placeholder() {
 setInterval(cycle_placeholder, cycle_interval);
 
 function escape_html(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    // quotes too, so the result is safe in attribute values as well as element content
+    return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
 }
 
 function set_status(text, cls) {

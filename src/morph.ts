@@ -1,19 +1,25 @@
 // Morphology facade used by the parser and the analyzer
 
 import { type grammar, type lex_entry } from "./grammar.ts";
+import { fs_sig } from "./featstruct.ts";
 import { apply_down, show_symbols } from "./fst.ts";
 import { apply_cascade_up } from "./morph_rules.ts";
 import { decode_lexical } from "./morph_lexc.ts";
 
+// Explicit lexicon entries and paradigm-derived analyses are merged, not
+// shadowed: a surface that is both an explicit entry and a derivable
+// inflection (English "saw": explicit noun, past of "see") keeps both
+// readings. Duplicates (same category, features, and error tag) collapse to
+// the explicit entry, which carries the author's original casing.
 export function morph_analyze(g: grammar, surface: string): lex_entry[] {
     const key = surface.toLowerCase();
-    const explicit = g.lexicon.get(key);
-
-    if (explicit && explicit.length > 0) return explicit;
+    const explicit = g.lexicon.get(key) ?? [];
+    const out: lex_entry[] = [...explicit];
 
     if (g.morph_fst) {
-        const out: lex_entry[] = [];
-        const seen = new Set<string>();
+        const seen = new Set<string>(
+            explicit.map((e) => `${e.cat}|${fs_sig(e.feats)}|${e.morph_err?.message ?? ""}`),
+        );
 
         // Run the rewrite cascade upward to recover the underlying strings the
         // lexicon recognises (e.g. "chased" -> "chaseed"). With no %rule the
@@ -37,7 +43,7 @@ export function morph_analyze(g: grammar, surface: string): lex_entry[] {
                     // lexicon actually matched so the error stays on its surface.
                     if (d.form !== cand_str) continue;
 
-                    const k = `${d.cat}|${tag_seq.join(" ")}|${d.error?.message ?? ""}`;
+                    const k = `${d.cat}|${fs_sig(d.feats)}|${d.error?.message ?? ""}`;
 
                     if (seen.has(k)) continue;
 
@@ -48,9 +54,7 @@ export function morph_analyze(g: grammar, surface: string): lex_entry[] {
                 }
             }
         }
-
-        return out;
     }
 
-    return [];
+    return out;
 }

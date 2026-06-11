@@ -14,6 +14,8 @@ const content_types: Record<string, string> = {
     ".json": "application/json",
 };
 
+// dev server for index.html only: bound to loopback below so the whole repo
+// (.git, notes, node_modules) isn't exposed to the LAN
 createServer(async (req, res) => {
     const url = (req.url ?? "/").split("?")[0];
     const rel = normalize(url === "/" ? "/index.html" : url).replace(/^(\.\.[/\\])+/, "");
@@ -26,4 +28,4 @@ createServer(async (req, res) => {
         res.writeHead(404, { "content-type": "text/plain" });
         res.end("404 Not Found");
     }
-}).listen(port, () => console.log(`serving ${root} at http://localhost:${port}`));
+}).listen(port, "127.0.0.1", () => console.log(`serving ${root} at http://localhost:${port}`));

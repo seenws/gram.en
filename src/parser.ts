@@ -1,4 +1,4 @@
-import { type feature_struct, fs, atom, unify, get_path, set_path } from "./featstruct.ts";
+import { type feature_struct, fs, atom, unify, get_path, set_path, fs_sig } from "./featstruct.ts";
 import type { grammar, rule, equation, term, path, diag, const_ref } from "./grammar.ts";
 import { morph_analyze } from "./morph.ts";
 
@@ -53,26 +53,15 @@ type item = {
     kids: edge[];            // completed child edges left of the dot (length === dot)
     violations: violation[]; // violations accumulated from those children
     edge: edge | null;       // mother edge, filled when the item is complete
+    key: string;             // packing key, fixed at creation (rule, dot, origin, kid signatures)
 };
 
-// Sorted, order-stable serialization of a feature structure. show_fs (featstruct)
-// walks Map insertion order, which is not stable across structurally-equal
-// structures built by different paths, so we sort keys here for packing.
-function fs_sig(x: feature_struct): string {
-    if (x.kind === "atom") return x.val;
+function make_item(rule: rule, dot: number, origin: number, kids: edge[], violations: violation[]): item {
+    const kid_sigs = kids.map((k) => fs_sig(k.tree.fs)).join(",");
 
-    const parts = [...x.feats.entries()]
-        .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-        .map(([k, v]) => `${k}:${fs_sig(v)}`);
-
-    return `[${parts.join(",")}]`;
+    return { rule, dot, origin, kids, violations, edge: null, key: `${rule.name}|${dot}|${origin}|${kid_sigs}` };
 }
 
-function item_key(it: item): string {
-    const kids = it.kids.map((k) => fs_sig(k.tree.fs)).join(",");
-
-    return `${it.rule.name}|${it.dot}|${it.origin}|${kids}`;
-}
 
 type column = { items: Map<string, item>; queue: item[] };
 
@@ -103,21 +92,20 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
     const cols: column[] = Array.from({ length: n + 1 }, () => ({ items: new Map(), queue: [] }));
 
     const add = (col: number, it: item): void => {
-        const key = item_key(it);
-        const existing = cols[col].items.get(key);
+        const existing = cols[col].items.get(it.key);
 
         // first time we see this key, or a strictly cheaper derivation of it: (re)enqueue.
         // violations only grow in relaxed mode, so this fixpoint terminates (counts are
         // bounded below by 0 and each replacement strictly decreases them).
         if (existing === undefined || it.violations.length < existing.violations.length) {
-            cols[col].items.set(key, it);
+            cols[col].items.set(it.key, it);
             cols[col].queue.push(it);
         }
     };
 
     const seed = (sym: string, col: number): void => {
         for (const r of by_lhs.get(sym) ?? []) {
-            add(col, { rule: r, dot: 0, origin: col, kids: [], violations: [], edge: null });
+            add(col, make_item(r, 0, col, [], []));
         }
     };
 
@@ -126,10 +114,12 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
     for (let i = 0; i <= n; i++) {
         const col = cols[i];
 
-        while (col.queue.length > 0) {
-            const it = col.queue.shift()!;
+        // index-pointer queue: shift() is O(queue length) per pop, and completions
+        // append to the queue while it drains
+        for (let qh = 0; qh < col.queue.length; qh++) {
+            const it = col.queue[qh];
 
-            if (col.items.get(item_key(it)) !== it) continue;
+            if (col.items.get(it.key) !== it) continue;
 
             if (it.dot < it.rule.rhs.length) {
                 const sym = it.rule.rhs[it.dot];
@@ -228,14 +218,7 @@ function chart_parse(c: ctx, by_lhs: Map<string, rule[]>, start: string, n: numb
 }
 
 function advance(it: item, child: edge): item {
-    return {
-        rule: it.rule,
-        dot: it.dot + 1,
-        origin: it.origin,
-        kids: [...it.kids, child],
-        violations: [...it.violations, ...child.violations],
-        edge: null,
-    };
+    return make_item(it.rule, it.dot + 1, it.origin, [...it.kids, child], [...it.violations, ...child.violations]);
 }
 
 // Build the mother edge for a completed item: run the rule's equations (the only

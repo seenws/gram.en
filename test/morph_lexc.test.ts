@@ -169,6 +169,17 @@ test("parse_morph_data: bare %lex without ': cat' is an error (non-Root)", () =>
     assert.throws(() => parse_morph_data(text), lexc_error);
 });
 
+test("parse_morph_data: uppercase stems and suffixes are load errors (input is lowercased)", () => {
+    assert.throws(
+        () => parse_morph_data(`%lex Root\n    Hund : N-reg`),
+        /stem 'Hund' contains uppercase/,
+    );
+    assert.throws(
+        () => parse_morph_data(`%lex N-reg : N\n    +N+Pl : S`),
+        /surface suffix 'S' contains uppercase/,
+    );
+});
+
 test("parse_morph_data: '0' surface is treated as empty", () => {
     const text = `
 %lex Root
@@ -261,9 +272,11 @@ test("override naming a tag the paradigm doesn't have throws", () => {
 });
 
 test("override under no preceding root is an error", () => {
+    // lowercase tag-shaped stem: uppercase stems are load errors since the
+    // case-sensitivity check, and case isn't what this test is about
     const text = `
 %lex Root
-        +N+Pl : 0
+        +n+pl : 0
 `;
     // first entry sets root_indent, so the second deeper line would be an
     // override on it; but here the very first line is deeper than nothing

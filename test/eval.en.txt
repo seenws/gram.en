@@ -1,0 +1,258 @@
+# Held-out probe set for the English fragment (see scripts/eval.ts).
+#
+# Sentences were written against the vocabulary list (lexicon.tsv + closed-class
+# files) WITHOUT consulting the rule inventory, then labeled for gold
+# grammaticality. Engine mistakes discovered by this set are findings to report,
+# not cases to remove. Labels:
+#   good     grammatical English
+#   bad      ungrammatical; error type is within the grammar's declared scope
+#            (detail = substring the violation should mention)
+#   bad-oos  ungrammatical; error type was never declared (transitivity,
+#            double determiners, fragments, ...) -- correct behavior is abstention
+#   oov      uses vocabulary the lexicon lacks; expected verdict unknown-word
+
+# --- good: simple clauses ------------------------------------------------------
+good | the dog barks
+good | the dogs bark
+good | a cat chased the dog
+good | the bird jumps
+good | the teacher talks
+good | the girl dances
+good | the boys laugh
+good | my dog barks
+good | their cats jump
+good | his uncle laughs
+good | our teacher smiles
+good | the queen smiled
+good | the king walked
+good | the children play
+good | the child plays
+good | dogs bark
+good | cats chase birds
+good | children laugh
+good | the cat chased a bird
+good | she likes the dog
+good | he helps the teacher
+good | I like the cat
+good | we help them
+good | they like us
+good | you talk
+good | it barks
+good | it is big
+good | he walks
+good | they dance
+good | she smiled
+
+# --- good: adjectives and degree ------------------------------------------------
+good | the big dog barks
+good | a small cat jumps
+good | an old elephant walks
+good | the big old dog barks
+good | a very big dog barks
+good | the very old elephant walks
+good | the happy children dance
+good | the bigger dog chased the cat
+good | the biggest dog barks
+good | the best teacher smiles
+good | he wants a better book
+good | the angry goat kicked the door
+good | the tall girl paints
+good | happy dogs jump
+
+# --- good: coordination ---------------------------------------------------------
+good | the dog and the cat bark
+good | the dog or the cat barks
+good | he and I walk
+good | the king and the queen dance
+good | the dog barks and the cat jumps
+good | she dances and he laughs
+good | the boys and the girls play
+
+# --- good: copula ---------------------------------------------------------------
+good | the dog is big
+good | he is a doctor
+good | I am happy
+good | they are teachers
+good | we are happy
+good | she is a queen
+good | the cats are small
+good | he isn't angry
+good | the dogs aren't big
+good | she's a teacher
+good | he's happy
+good | the elephant is very big
+good | this dog is old
+
+# --- good: auxiliaries ----------------------------------------------------------
+good | he will talk
+good | I'll walk
+good | she has walked
+good | they have walked
+good | he had walked
+good | I've helped the teacher
+good | the dog is barking
+good | I am walking
+good | they are dancing
+good | she's walking
+good | the dog doesn't bark
+good | I don't like the cat
+good | they don't dance
+good | he doesn't talk
+good | he would dance
+good | I'd walk
+
+# --- good: adverbs and prepositional phrases -------------------------------------
+good | the dog barks loudly
+good | the children play quietly
+good | she dances well
+good | the dog quickly chased the cat
+good | he talks slowly
+good | the dog walks to the school
+good | she talks with the teacher
+good | the cat jumps on the table
+good | he walks to the river
+good | the girl with the hat smiles
+good | the book on the table is old
+
+# --- good: determiners and pronouns ----------------------------------------------
+good | this dog barks
+good | these dogs bark
+good | that cat is old
+good | those birds jump
+good | she likes mine
+good | her dog barks
+good | I like her
+
+# --- good: deliberately hard (idioms / nested auxiliaries) ------------------------
+good | he will have walked
+good | he walks to school
+
+# --- bad: subject-verb agreement (in scope) ---------------------------------------
+bad | the dog bark | agreement
+bad | the dogs barks | agreement
+bad | he bark | agreement
+bad | she walk | agreement
+bad | I walks | agreement
+bad | the cat and the dog barks | agreement
+bad | they walks | agreement
+bad | we likes the dog | agreement
+bad | the children plays | agreement
+bad | the child play | agreement
+bad | the teacher talk | agreement
+bad | you talks | agreement
+
+# --- bad: article form a/an (in scope) ---------------------------------------------
+bad | an dog barks | article
+bad | a apple is red | article
+bad | an cat chased the dog | article
+bad | a old elephant walks | article
+bad | an big dog barks | article
+bad | a angry goat kicked the door | article
+bad | an teacher smiles | article
+bad | a owl jumps | article
+
+# --- bad: subject case (in scope) ---------------------------------------------------
+bad | me talk | nominative
+bad | him barks | nominative
+bad | us walk | nominative
+bad | them dance | nominative
+bad | me and him walk | nominative
+bad | him and me dance | nominative
+bad | me and her dance | nominative
+
+# --- bad: object case (in scope) ------------------------------------------------------
+bad | the dog chased I | accusative
+bad | she likes we | accusative
+bad | he helps they | accusative
+bad | the cat likes he | accusative
+bad | they help she | accusative
+bad | he talks with I | accusative
+bad | she walks with they | accusative
+
+# --- bad: determiner-noun number (in scope) --------------------------------------------
+bad | this dogs bark | determiner-noun
+bad | these dog bark | determiner-noun
+bad | that cats jump | determiner-noun
+bad | those bird jump | determiner-noun
+bad | this teachers talk | determiner-noun
+bad | these child play | determiner-noun
+
+# --- bad: missing determiner (in scope) -------------------------------------------------
+bad | dog barks | determiner
+bad | cat chased the dog | determiner
+bad | teacher smiles | determiner
+bad | child plays | determiner
+bad | big dog barks | determiner
+bad | elephant walks | determiner
+
+# --- bad: verb form after auxiliary (in scope) -------------------------------------------
+bad | I'll barked | verb form
+bad | he will barks | verb form
+bad | she has bark | verb form
+bad | they have barking | verb form
+bad | they are walk | verb form
+bad | I have walking | verb form
+bad | he doesn't barked | verb form
+bad | she doesn't walks | verb form
+bad | he would walks | verb form
+
+# --- bad: irregular plural (in scope) ------------------------------------------------------
+bad | the childs play | irregular
+bad | his childs dance | irregular
+
+# --- bad: word order (in scope, mal-rule) ---------------------------------------------------
+bad | barks the dog | word order
+bad | walks the king | word order
+bad | jumps the cat | word order
+bad | talks the teacher | word order
+
+# --- bad-oos: argument structure (never declared; engine is expected to overgenerate) --------
+bad-oos | the dog wants
+bad-oos | she needs
+bad-oos | he uses
+bad-oos | they enjoy
+bad-oos | the teacher names
+bad-oos | the dog barks the cat
+bad-oos | the cat laughs the dog
+bad-oos | he is barks
+
+# --- bad-oos: structure the grammar never licenses (expected abstention) ----------------------
+bad-oos | the this dog barks
+bad-oos | a my cat jumps
+bad-oos | the the dog barks
+bad-oos | the dog barking
+bad-oos | the cat the dog barks
+bad-oos | dog the barks
+bad-oos | the dog and barks
+bad-oos | or the cat barks
+bad-oos | the dog is
+bad-oos | he the dog likes
+bad-oos | the dog cat barks
+bad-oos | walks
+bad-oos | the dog
+bad-oos | happy the dog barks
+bad-oos | the dog barks and
+bad-oos | to the school
+bad-oos | he will would walk
+bad-oos | I am is happy
+bad-oos | the dog smells the
+bad-oos | she talks the teacher with
+bad-oos | the child plays the
+bad-oos | and the dog barks
+
+# --- oov: vocabulary outside the lexicon (expected unknown-word) ------------------------------
+oov | the zebra runs
+oov | the computer works
+oov | she reads the book
+oov | the wolf chased the sheep
+oov | my brother dances
+oov | the sun rises
+oov | he eats an apple
+oov | the baby smiles
+oov | a man walks
+oov | the woman talks
+oov | the students learn
+oov | he drives the car
+oov | the fish jumps
+oov | she sings well
+oov | the rabbit jumps quickly

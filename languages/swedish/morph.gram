@@ -8,9 +8,8 @@
 # class, kept out of lexicon.tsv exactly as in English). Bulk noun and verb stems
 # live in lexicon.tsv (pulled in via `%import lexicon.tsv` from sv.gram).
 #
-# Only adjectives whose neuter is a clean stem+t and plural a clean stem+a are
-# seeded. Future: t-assimilating stems (röd -> rött, glad -> glatt, ny -> nytt)
-# and irregular "liten/litet/lilla/små" want dedicated paradigms first.
+# Adj-reg: clean stem+t neuter (stor/stort/stora). Adj-dt: neuter doubles to +tt
+# with d-assimilation (röd/rött/röda). Future: irregular "liten/litet/lilla/små".
 %lex Root
     stor  : Adj-reg  <lemma>=stor
     snäll : Adj-reg  <lemma>=snäll
@@ -23,6 +22,11 @@
     stark : Adj-reg  <lemma>=stark
     mörk  : Adj-reg  <lemma>=mörk
     ljus  : Adj-reg  <lemma>=ljus
+    röd   : Adj-dt   <lemma>=röd
+    glad  : Adj-dt   <lemma>=glad
+    god   : Adj-dt   <lemma>=god
+    bred  : Adj-dt   <lemma>=bred
+    ny    : Adj-dt   <lemma>=ny
 
 # --- Noun declensions ---------------------------------------------------------
 # Each paradigm is the 4-cell number x definiteness grid. `article`=req marks the
@@ -83,6 +87,16 @@
     +Adj+Pl     : a              <num>=pl  <def>=indef <degree>=pos   # stora (indef pl)
     +Adj+Weak   : a                        <def>=def   <degree>=pos   # stora (definite)
 
+# t-assimilating adjectives: the neuter suffix is `tt`, and the rule `d:0 => _ t`
+# deletes a stem-final `d` before the first `t`, giving the correct double-t surface
+# form. röd+tt -> rött, glad+tt -> glatt, god+tt -> gott, bred+tt -> brett.
+# Stems without a final `d` (ny) pass through unchanged: ny+tt -> nytt.
+%lex Adj-dt : Adj
+    +Adj+Utr+Sg :     <gender>=utr <num>=sg <def>=indef <degree>=pos   # röd
+    +Adj+Neu+Sg : tt  <gender>=neu <num>=sg <def>=indef <degree>=pos   # rött
+    +Adj+Pl     : a              <num>=pl  <def>=indef <degree>=pos   # röda
+    +Adj+Weak   : a                        <def>=def   <degree>=pos   # röda (def)
+
 # --- Verb conjugations --------------------------------------------------------
 # Swedish present tense does NOT agree with the subject, so verb forms carry no
 # person/number features at all -- S -> NP VP has no agreement equation.
@@ -110,3 +124,8 @@
 # suffix boundary), safe only because the lexicon filters the over-generation.
 # Future: make it boundary-sensitive once a morpheme boundary is on the tape.
 %rule a:0 => _ Vowel
+# Delete stem-final `d` before a `t`-initial suffix. Used by Adj-dt: röd+tt ->
+# rött, glad+tt -> glatt. Stems without final `d` (ny+tt -> nytt) pass through
+# unaffected. Safe given the current lexicon; the same boundary-insensitive
+# trade-off as a:0.
+%rule d:0 => _ t

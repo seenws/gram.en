@@ -89,6 +89,26 @@ bad | hunden skäller med han  | accusative
 # --- ungrammatical: wrong verb form after the auxiliary -----------------------
 bad | hunden har skäller      | verb form
 
+# --- grammatical: t-assimilating adjectives (Adj-dt: röd, glad, ny, ...) ------
+ok | en röd hund skäller
+ok | ett rött hus är fint
+ok | den röda hunden skäller
+ok | det röda huset är fint
+ok | röda hundar skäller
+ok | hunden är röd
+ok | huset är rött
+ok | hundarna är röda
+ok | en glad hund skäller
+ok | ett glatt barn skäller
+ok | ett nytt hus är fint
+ok | en ny hund skäller
+
+# --- ungrammatical: wrong t-assimilation form ---------------------------------
+bad | ett röd hus skäller       | adjective gender
+bad | en rött hund skäller      | adjective gender
+bad | huset är röd              | predicate
+bad | hunden är rött            | predicate
+
 # --- out of coverage (no analysis, not ungrammatical) -------------------------
 none | i skogen
 none | hunden hunden

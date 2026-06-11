@@ -14,7 +14,8 @@
 #                   (primitives: agree(<cat>[,<feat>=<val>]) | swap(<cat>) | insert(<cat>));
 #                   reported (with the constituents in the equation highlighted)
 #                   when relaxing exactly that constraint rescues the parse.
-#   mal-rule      : %mal LHS -> RHS ...   with *ERR "message" and *FIX ...
+#   mal-rule      : %mal LHS -> RHS ...   with *ERR "message" (fixes are derived
+#                   automatically: constituent reorderings that parse clean)
 #   declaration   : %feature <name> : v1 | v2 | ...   (or `: *` for an open feature)
 #   engine config : %start <Sym>   %tokenizer <name>   %clitic <suffix>...
 #   file directive: %include <file.gram>   %import <file.tsv>

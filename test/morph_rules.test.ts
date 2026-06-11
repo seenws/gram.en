@@ -88,8 +88,10 @@ test("parse_rule: deletion via the 0 literal", () => {
     assert.deepEqual(parse_rule("e:0"), { in: ["e"], out: [], left: [], right: [] });
 });
 
-test("parse_rule: insertion (0:s)", () => {
-    assert.deepEqual(parse_rule("0:s"), { in: [], out: ["s"], left: [], right: [] });
+test("parse_rule: pure insertion (0:s) is rejected at parse time", () => {
+    // ε-input loops through the optional-replace Kleene star are not supported
+    // by epsilon_eliminate; the rule compiler refuses them up front.
+    assert.throws(() => parse_rule("0:s"), /pure-insertion/);
 });
 
 test("parse_rule: right context", () => {

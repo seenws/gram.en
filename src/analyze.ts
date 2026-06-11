@@ -9,8 +9,9 @@ import {
     full_parses,
     match_sequence,
 } from "./parser.ts";
-import { morph_analyze } from "./morph.ts";
 import { effective_entries } from "./morph_lexc.ts";
+import { apply_cascade_down } from "./morph_rules.ts";
+import { show_symbols } from "./fst.ts";
 
 // span is a token range [i, j); char_span is the matching character range in the source sentence
 export type reported_violation = {
@@ -42,25 +43,26 @@ export function analyze(g: grammar, sentence: string, opts: analyze_options = {}
             : [0, sentence.length];
 
     const trace = opts.trace;
+    // one morphology pass: the lex items double as the unknown-word check
+    const lex = build_lex_items(g, tokens);
 
     if (trace) {
         trace(`tokens: ${tokens.map((t, i) => `${i}:"${t}"`).join("  ") || "(none)"}`);
         trace("=== morphology ===");
         tokens.forEach((t, i) => {
-            const a = morph_analyze(g, t).map((e) => `${e.cat}${show_fs(e.feats)}${e.morph_err ? " *ERR" : ""}`);
+            const a = lex[i].map((e) => `${e.cat}${show_fs(e.feats)}${e.morph_err ? " *ERR" : ""}`);
             trace(`  [${i}] "${t}" → ${a.join("  ") || "∅ (unknown word)"}`);
         });
         trace("=== earley parse (strict) ===");
     }
 
-    const unknown = tokens.filter((t) => morph_analyze(g, t).length === 0);
+    const unknown = tokens.filter((_, i) => lex[i].length === 0);
 
     if (unknown.length > 0) {
         return { verdict: "unknown-word", tokens, tree: null, violations: [], unknown_words: unknown };
     }
 
     const n = tokens.length;
-    const lex = build_lex_items(g, tokens);
     const strict = full_parses(make_ctx(g, lex, false, trace), n);
 
     // strict parses can now carry leaf-level violations from error-tagged
@@ -169,7 +171,19 @@ function build_entries(g: grammar): lex_entry[] {
 
             if (merged === null) continue;
 
-            out.push({ form: r.surface + e.surface, cat: p.cat, feats: merged });
+            // Apply the rewrite cascade to get the canonical surface form.
+            // If any rule fired (output differs from the raw concatenation) we
+            // use only those modified outputs; otherwise we keep the raw form.
+            // This ensures that fix suggestions show "rött" (cascade-applied)
+            // rather than the underlying "rödtt" (stem + raw paradigm suffix).
+            const underlying = r.surface + e.surface;
+            const surfaces = g.morph_cascade.length > 0
+                ? apply_cascade_down(g.morph_cascade, underlying).map(show_symbols)
+                : [underlying];
+            const derived = surfaces.filter((s) => s !== underlying);
+            const forms = derived.length > 0 ? derived : [underlying];
+
+            for (const form of forms) out.push({ form, cat: p.cat, feats: merged });
         }
     }
 
@@ -327,10 +341,20 @@ function candidates_for(g: grammar, strat: string, tokens: string[], t: tree, v:
     }
 }
 
+// Reordering tries every permutation of the matched constituent blocks, each a
+// full re-parse -- factorial in block count. Mal-rules today have 2-3 blocks
+// (≤ 6 parses); the cap makes a future wide mal-rule degrade to "no suggestions"
+// instead of thousands of parses, and MAX_FIXES bounds the work either way.
+const MAX_REORDER_BLOCKS = 5; // 5! = 120 permutations
+
 function reorder_fixes(g: grammar, tokens: string[], blocks: [number, number][]): string[] {
     const out = new Set<string>();
 
+    if (blocks.length > MAX_REORDER_BLOCKS) return [];
+
     for (const perm of permutations(blocks.map((_, i) => i))) {
+        if (out.size >= MAX_FIXES) break;
+
         const cand: string[] = [];
 
         for (const bi of perm) {
@@ -360,11 +384,11 @@ function permutations<T>(xs: T[]): T[][] {
 }
 
 export function parses_clean(g: grammar, tokens: string[]): boolean {
-    if (tokens.some((t) => morph_analyze(g, t).length === 0)) return false;
+    const lex = build_lex_items(g, tokens);
 
-    const c = make_ctx(g, build_lex_items(g, tokens), false);
+    if (lex.some((row) => row.length === 0)) return false; // unknown word
 
-    return full_parses(c, tokens.length).some((e) => e.violations.length === 0);
+    return full_parses(make_ctx(g, lex, false), tokens.length).some((e) => e.violations.length === 0);
 }
 
 // True iff re-parsing `tokens` yields strictly fewer violations than `base_count`.
@@ -372,13 +396,16 @@ export function parses_clean(g: grammar, tokens: string[]): boolean {
 // win, so we skip the relaxed parse entirely; the relaxed count is consulted only
 // to detect a *partial* improvement (base_count > 1).
 function beats_base(g: grammar, tokens: string[], base_count: number): boolean {
-    if (tokens.some((t) => morph_analyze(g, t).length === 0)) return false;
+    const lex = build_lex_items(g, tokens);
 
-    if (parses_clean(g, tokens)) return true; // 0 violations < base_count
+    if (lex.some((row) => row.length === 0)) return false; // unknown word
+
+    // 0 violations < base_count
+    if (full_parses(make_ctx(g, lex, false), tokens.length).some((e) => e.violations.length === 0)) return true;
 
     if (base_count <= 1) return false; // only a clean parse beats a single error
 
-    const relaxed = full_parses(make_ctx(g, build_lex_items(g, tokens), true), tokens.length);
+    const relaxed = full_parses(make_ctx(g, lex, true), tokens.length);
 
     return relaxed.length > 0 && Math.min(...relaxed.map((e) => e.violations.length)) < base_count;
 }

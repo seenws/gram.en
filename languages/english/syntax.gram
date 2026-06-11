@@ -141,4 +141,5 @@ VP -> Adv VP
 
 %mal S -> V NP
     *ERR "word order: English clauses are subject-verb-object; the verb appears before its subject"
-    *FIX reorder to "<NP> <V>"        # "barks the dog" -> "the dog barks"
+    # fix suggestions are derived automatically: every reordering of the matched
+    # constituents that parses clean ("barks the dog" -> "the dog barks")

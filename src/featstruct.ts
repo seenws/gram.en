@@ -72,6 +72,35 @@ export function set_path(root: feature_struct, feats: readonly string[], val: fe
     return { kind: "fs", feats: m };
 }
 
+// Sorted, order-stable serialization of a feature structure: structurally equal
+// structures built by different paths get the same signature (show_fs walks Map
+// insertion order, which doesn't). Used for chart-item packing and analysis
+// dedup. Structures are immutable after construction, so signatures are
+// memoised per object.
+const sig_cache = new WeakMap<feature_struct, string>();
+
+export function fs_sig(x: feature_struct): string {
+    const hit = sig_cache.get(x);
+
+    if (hit !== undefined) return hit;
+
+    let sig: string;
+
+    if (x.kind === "atom") {
+        sig = x.val;
+    } else {
+        const parts = [...x.feats.entries()]
+            .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+            .map(([k, v]) => `${k}:${fs_sig(v)}`);
+
+        sig = `[${parts.join(",")}]`;
+    }
+
+    sig_cache.set(x, sig);
+
+    return sig;
+}
+
 export function show_fs(x: feature_struct): string {
     if (x.kind === "atom") return x.val;
 

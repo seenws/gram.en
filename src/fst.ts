@@ -362,6 +362,14 @@ export function apply_down(f: fst, input: string | string[]): string[][] {
 
 // Construct an equivalent FST with no ε-input arcs.
 //
+// PRECONDITION: between any pair of states there is at most one distinct
+// output along ε-input paths. The closure below keeps a single prefix per
+// reachable state (first-found path wins), so two ε-paths s→t carrying
+// different outputs would silently lose one analysis. Every FST built here
+// satisfies this -- stem tries and continuation branches are tree-shaped, and
+// rewrite rules cannot introduce ε-input cycles that emit output because
+// parse_rule rejects pure-insertion rewrites. Revisit if that changes.
+//
 // For each state s, the ε-input closure is computed by BFS: a Map<t, prefix>
 // listing every t reachable from s via ε-input arcs, with the concatenated
 // output string along that path. (First-found path wins; ε-input cycles
@@ -386,8 +394,8 @@ export function epsilon_eliminate(f: fst): fst {
         reach.set(s, "");
         const queue: number[] = [s];
 
-        while (queue.length > 0) {
-            const cur = queue.shift()!;
+        for (let qh = 0; qh < queue.length; qh++) {
+            const cur = queue[qh];
             const cur_out = reach.get(cur)!;
 
             for (const a of f.out_arcs[cur]) {
@@ -441,8 +449,20 @@ export function epsilon_eliminate(f: fst): fst {
     };
 }
 
+// FSTs are immutable after construction, so the inversion is computed once per
+// machine and reused -- apply_up is called per (rule, candidate) per analysed
+// token, and re-inverting the rule FST each time dominated the morph path.
+const inverted_cache = new WeakMap<fst, fst>();
+
 export function apply_up(f: fst, input: string | string[]): string[][] {
-    return apply_down(invert(f), input);
+    let inv = inverted_cache.get(f);
+
+    if (inv === undefined) {
+        inv = invert(f);
+        inverted_cache.set(f, inv);
+    }
+
+    return apply_down(inv, input);
 }
 
 function dedupe(rs: string[][]): string[][] {

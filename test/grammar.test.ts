@@ -171,9 +171,13 @@ test("en.gram declares its start symbol and whitespace tokenizer", () => {
     ]);
 });
 
-test("start symbol defaults to S when no %start is declared", () => {
+test("start symbol defaults to the first rule's LHS when no %start is declared", () => {
     const h = parse_grammar(`S -> NP\nNP -> N`);
     assert.equal(h.start, "S");
+
+    // a grammar that never mentions S still gets a usable start symbol
+    const k = parse_grammar(`Clause -> NP\nNP -> N`);
+    assert.equal(k.start, "Clause");
 });
 
 test("%start lets a grammar parse from a non-S nonterminal", () => {

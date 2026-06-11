@@ -184,6 +184,15 @@ export function parse_rule(text: string, classes: char_classes = NO_CLASSES): ru
     const inp = parse_pattern(rewrite_str.slice(0, ri).trim(), classes);
     const out = parse_pattern(rewrite_str.slice(ri + 1).trim(), classes);
 
+    // Pure insertion (0:x) compiles to an ε-input arc inside the optional-replace
+    // Kleene loop, an ε-cycle that emits output. epsilon_eliminate keeps only the
+    // first-found ε-path per state pair, so those insertion paths are silently
+    // dropped (and apply_down's cycle guard would truncate them anyway). Reject
+    // the rule here, where the author can see it, instead of mis-analysing later.
+    if (inp.length === 0) {
+        throw new Error(`rule: pure-insertion rewrites (0:x) are not supported: ${rewrite_str}`);
+    }
+
     let left: string[] = [];
     let right: string[] = [];
 

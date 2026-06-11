@@ -19,7 +19,7 @@ export type equation = { left: path; right: term; diag: diag | null };
 // `head` is the daughter index the mother inherits its features from when the LHS
 // category occurs exactly once among the daughters (head percolation), else null.
 export type rule = { lhs: string; rhs: string[]; eqs: equation[]; name: string; head: number | null };
-export type mal_rule = { lhs: string; rhs: string[]; err: string; fix: string | null; name: string };
+export type mal_rule = { lhs: string; rhs: string[]; err: string; name: string };
 export type lex_entry = { form: string; cat: string; feats: feature_struct; morph_err?: morph_diag };
 
 export type grammar = {
@@ -353,7 +353,7 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
                 // mal-rules carry no equations, so aliases are irrelevant here
                 const { lhs, rhs } = parse_production(trimmed.slice(4).trim(), loc);
                 const cats = rhs.map((c) => c.cat);
-                const mal: mal_rule = { lhs: lhs.cat, rhs: cats, err: "", fix: null, name: prod_name(lhs.cat, cats) };
+                const mal: mal_rule = { lhs: lhs.cat, rhs: cats, err: "", name: prod_name(lhs.cat, cats) };
                 malrules.push(mal);
                 nonterminals.add(lhs.cat);
                 cur = { kind: "mal", mal };
@@ -395,7 +395,10 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
             } else if (trimmed.startsWith("*ERR")) {
                 cur.mal.err = parse_quoted(trimmed.slice(4).trim(), loc);
             } else if (trimmed.startsWith("*FIX")) {
-                cur.mal.fix = trimmed.slice(4).trim();
+                // fixes for a matched mal-rule are derived automatically (every
+                // constituent reordering that parses clean), so a hand-written
+                // *FIX would be dead data; reject it rather than ignore it.
+                throw new grammar_error(loc, `*FIX is not supported in %mal blocks (reorder fixes are derived automatically)`);
             } else {
                 throw new grammar_error(loc, `unrecognized mal-rule line: ${trimmed}`);
             }
@@ -419,12 +422,12 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
 
     validate_features(features, lexicon, rules, morph);
 
-    // Start defaults to "S" (the historical default) unless declared; an explicit
+    // Start defaults to the first rule's LHS unless declared; an explicit
     // %start must name a real nonterminal. The tokenizer comes from the registry.
     if (start_sym !== null && !nonterminals.has(start_sym)) {
         throw new grammar_error(opts.filename ?? "en.gram", `%start ${start_sym} is not a nonterminal`);
     }
-    const start = start_sym ?? "S";
+    const start = start_sym ?? rules[0]?.lhs ?? "S";
     const tokenize = build_tokenizer(tokenizer_name, clitics);
 
     return {
