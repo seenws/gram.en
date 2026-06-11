@@ -5,7 +5,7 @@
 
 # gram.en
 
-**gram.en** is an explainable grammatical analysis engine. It doesn't just decide whether a sentence is grammatical: it reports **which constraint failed, where it failed, and what repair follows from that failure**, and the verdict and the explanation come from the same computation.
+**gram.en** is an explainable grammatical analysis engine. It doesn't just decide whether a sentence is grammatical: it reports which constraint failed, where it failed, and what repair follows from that failure, and the verdict and the explanation come from the same computation.
 
 It treats natural language like a compiler front end:
 
@@ -62,7 +62,7 @@ There is also a browser demo (`index.html`): violations are underlined as you ty
 
 ## Quick start
 
-Requires **Node ≥ 22.6** (the engine runs through native TypeScript type-stripping; no build step for local use).
+Requires Node ≥ 22.6 (the engine runs through native TypeScript type-stripping; no build step for local use).
 
 ```sh
 npm run analyze "the dog barks"   # analyze a sentence (--lang sv for Swedish)
