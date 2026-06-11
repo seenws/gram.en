@@ -5,7 +5,7 @@
 
 # gram.en
 
-**gram.en** is an explainable grammatical analysis engine. It doesn't just decide whether a sentence is grammatical — it reports **which constraint failed, where it failed, and what repair follows from that failure**, and the verdict and the explanation come from the same computation.
+**gram.en** is an explainable grammatical analysis engine. It doesn't just decide whether a sentence is grammatical: it reports **which constraint failed, where it failed, and what repair follows from that failure**, and the verdict and the explanation come from the same computation.
 
 It treats natural language like a compiler front end:
 
@@ -46,7 +46,7 @@ Rule:      NP -> Art N
 Fix:       "en hund skäller"
 ```
 
-And it knows what it doesn't know. A failed parse is only reported as an error when the engine can localize it to a named constraint — otherwise it abstains:
+And it knows what it doesn't know. A failed parse is only reported as an error when the engine can localize it to a named constraint; otherwise it abstains:
 
 ```console
 $ npm run analyze "the dog glorps"
@@ -94,13 +94,13 @@ const result = analyze(g, "the dog bark");
 | **Lexicon** | Attaches categories and feature structures to closed-class words, clitics, auxiliaries, and analyzed stems. |
 | **Parser** | An Earley chart parser over a context-free backbone; ambiguity is kept alive until structure resolves it. |
 | **Unification** | Feature equations on rules enforce agreement, case, and verb-form constraints. |
-| **Diagnostics** | A failed unification, a relaxed constraint, or a matched mal-rule becomes the report — with a span and verified fixes. |
+| **Diagnostics** | A failed unification, a relaxed constraint, or a matched mal-rule becomes the report, complete with a span and verified fixes. |
 
-The honesty rule is central: a successful parse means *grammatical within the implemented fragment*, and a failed parse without a known diagnostic means **out of coverage** — not proof the user made a mistake. That distinction is what the four verdicts encode.
+The honesty rule is central: a successful parse means *grammatical within the implemented fragment*, and a failed parse without a known diagnostic means **out of coverage**, not proof the user made a mistake. That distinction is what the four verdicts encode.
 
 ## Writing grammars
 
-Grammars live in `.gram` files — a small declarative language for lexicon entries, phrase rules, feature constraints, morphology, and diagnostics:
+Grammars live in `.gram` files, a small declarative language for lexicon entries, phrase rules, feature constraints, morphology, and diagnostics:
 
 ```gram
 %feature num  : sg | pl
@@ -114,7 +114,7 @@ S -> NP VP
   <NP agr> = <VP agr> ! "subject-verb agreement" fix: agree-verb
 ```
 
-The `!` annotation makes a constraint diagnosable: if strict parsing fails but relaxing that equation yields a parse, the equation becomes the explanation and the `fix:` strategy generates repair candidates. Feature declarations act as a load-time type discipline — `<num>=sgular` is rejected when the grammar loads, not silently never-unified.
+The `!` annotation makes a constraint diagnosable: if strict parsing fails but relaxing that equation yields a parse, the equation becomes the explanation and the `fix:` strategy generates repair candidates. Feature declarations act as a load-time type discipline: `<num>=sgular` is rejected when the grammar loads, not silently never-unified.
 
 | Form | Meaning |
 |---|---|
@@ -126,7 +126,7 @@ The `!` annotation makes a constraint diagnosable: if strict parsing fails but r
 | `%start`, `%tokenizer`, `%clitic` | Language policy, declared per grammar |
 | `%include`, `%import` | Modular grammar files, TSV lexicons |
 
-Each language is a folder under `languages/` with its own manifest, regression corpus, and lexicon. The Swedish fragment (`languages/swedish/sv.gram`) exercises what English doesn't — two genders with adjective agreement, suffixal and double definiteness (`hund → hunden`, `den stora hunden`) — and skips what Swedish lacks (present-tense subject–verb agreement), all without engine changes.
+Each language is a folder under `languages/` with its own manifest, regression corpus, and lexicon. The Swedish fragment (`languages/swedish/sv.gram`) exercises what English doesn't: two genders with adjective agreement, plus suffixal and double definiteness (`hund → hunden`, `den stora hunden`). It also skips what Swedish lacks (present-tense subject-verb agreement), all without engine changes.
 
 ## Accuracy and performance
 
@@ -134,7 +134,7 @@ On a held-out probe set of 206 sentences (`npm run eval`):
 
 - **96.9%** precision of the `ungrammatical` verdict (63 of 65 flags are real errors)
 - **100%** recall on in-scope errors, every flag naming the intended constraint
-- **66.7%** abstention on out-of-scope errors — the engine says "out of coverage" rather than guessing
+- **66.7%** abstention on out-of-scope errors: the engine says "out of coverage" rather than guessing
 - **100%** of out-of-vocabulary sentences routed to `unknown-word`
 
 Analysis time is independent of lexicon size: with a 10k-word imported lexicon, grammatical sentences analyze in ~0.3 ms and the diagnostic path (which generates and re-parses repair candidates) stays in low single-digit milliseconds (`npm run bench`).
@@ -152,7 +152,7 @@ index.html  browser demo (loads dist/engine.js)
 
 ## Theory notes
 
-The accompanying paper covers the formal background — the Chomsky hierarchy and membership complexity, pumping lemmas and natural-language dependencies, finite-state morphology, feature-structure unification and its decidability, diagnostic soundness, and the held-out evaluation.
+The accompanying paper covers the formal background: the Chomsky hierarchy and membership complexity, pumping lemmas and natural-language dependencies, finite-state morphology, feature-structure unification and its decidability, diagnostic soundness, and the held-out evaluation.
 
 Source: [`notes/notes.tex`](notes/notes.tex) · Typeset PDF: [`notes/notes.pdf`](notes/notes.pdf)
 
