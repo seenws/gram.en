@@ -39,15 +39,17 @@
 #   anim   = anim | inan        animacy (selects the masculine accusative form)
 #   tense  = pres | past        finite tense (only pres is built out here)
 #   vform  = bare | fin         verb form (infinitive vs finite)
+#   valency= tr | intr          transitivity (whether a verb takes a direct object)
 
-%feature num    : sg | pl
-%feature pers   : 1 | 2 | 3
-%feature gender : masc | fem | neu
-%feature case   : nom | acc
-%feature anim   : anim | inan
-%feature tense  : pres | past
-%feature vform  : bare | fin
-%feature lemma  : *
+%feature num     : sg | pl
+%feature pers    : 1 | 2 | 3
+%feature gender  : masc | fem | neu
+%feature case    : nom | acc
+%feature anim    : anim | inan
+%feature tense   : pres | past
+%feature vform   : bare | fin
+%feature valency : tr | intr
+%feature lemma   : *
 
 # Russian parses from S and splits on whitespace. No clitics and no contractions.
 %start S

@@ -92,8 +92,9 @@ scope, treating ``out of coverage'' as an answer in its own right.
 
 The current grammars are deliberately small, but the implementation is not
 English-specific: the start symbol, tokenizer, and repair primitives are declared by the
-grammar, and a second Swedish fragment exercises the same machinery with different
-agreement and definiteness patterns.
+grammar, and Swedish and Russian fragments exercise the same machinery with different
+agreement, definiteness, and case patterns. Their morphology is validated token-by-token
+against Universal Dependencies treebanks, gold annotations the grammars were never tuned to.
 \end{abstract}
 
 \newpage
@@ -1771,6 +1772,59 @@ morphological facts without changing the core. The next fragments should be
 chosen not merely because they are interesting, but because each one asks a new
 question of the architecture.
 
+\section{A third fragment: Russian}
+\label{sec:russian}
+
+The Swedish section closes by asking that each new fragment pose a new question to the
+architecture rather than merely add a language, and it names the obvious candidates. The
+first of them---a language with rich case marking---is Russian, the third fragment.
+
+Case is the point of contact. English and Swedish expose case on only a few pronouns
+(\emph{he}/\emph{him}, \emph{han}/\emph{honom}); Russian marks it across the whole noun,
+adjective, and pronoun system, fusing case and number into a single ending. The fragment
+implements the nominative and accusative, which is enough to make the case feature do real
+work on ordinary nouns instead of a closed pronoun list: a nominative direct object, or an
+accusative subject, fails on the same kind of feature equation that caught \emph{me like
+dogs} in English.
+
+The accusative also hides a dependency worth modeling. Its form depends on \emph{animacy}:
+an animate masculine noun takes the genitive ending in the accusative (\emph{kot} $\to$
+\emph{kota}, ``cat''), while an inanimate masculine or a neuter leaves the accusative
+identical to the nominative (\emph{\v{z}urnal} ``magazine'', \emph{okno} ``window''). The
+fragment encodes this with no special mechanism: the inanimate and neuter paradigms list
+the nominative and accusative as two entries with the same ending, so one surface form
+yields two analyses and the parser keeps whichever its position licenses. The syncretism
+falls out of the morphology returning more than one analysis, which is what the chart
+parser already does with ambiguity.
+
+Agreement runs the opposite way from Swedish. Where Swedish dropped subject--verb
+agreement, Russian reinstates it in full: present-tense verbs agree with the subject in
+person and number, a six-way paradigm, finer than English's lone third-person-singular
+contrast. The feature equations that sit vacuous in the Swedish clause rule do real work in
+the Russian one, with no change to the engine; the parser still applies only the equations
+the grammar writes.
+
+The remaining facts asked nothing of the core. Cyrillic needed no special tokenizer,
+because the tokenizer splits on Unicode code points and is script-agnostic. The
+morphophonemic cascade is exercised by a vowel-spelling rule on the nominative-plural
+ending after velar and hushing stems (\emph{sobaka} $\to$ \emph{sobaki}, not
+\emph{*sobaky}), the Russian counterpart of the English silent-\emph{e} and the Swedish
+assimilation rules. The absence of a present-tense copula (\emph{on student}, ``he [is a]
+student'') is a syntactic rule, not a gap.
+
+Two honest limitations follow from the conservatism described earlier. Russian word order is
+freer than a context-free backbone allows: case marking makes object-initial orders
+grammatical, but the grammar fixes subject--verb--object and so \emph{abstains} on a
+scrambled-but-valid sentence rather than flagging it---the coverage trap, now applied to
+word order. And the fragment stops at two of the six cases, so an oblique form is out of
+coverage rather than wrong.
+
+The deeper shift is methodological. Russian is the first fragment in a language I do not
+speak. For English and Swedish I was my own oracle: grammar, regression corpus, and gold
+labels all came from native judgment. That is no longer available, and a corpus I author
+against a grammar I author cannot catch a mistake the two share. This is the motivation for
+the external validation in Section~\ref{sec:ud}.
+
 \section{The grammar file format}
 \label{sec:format}
 
@@ -2089,8 +2143,8 @@ so the grammar gives it a distinct projection such as \texttt{AuxP}.
 
 \section{Scope, limitations, and readiness for expansion}
 
-The current system contains small English and Swedish fragments with plans to
-expand to Russian and Japanese, not wide-coverage grammars. It
+The current system contains small English, Swedish, and Russian fragments, with
+Japanese planned, not wide-coverage grammars. It
 is intentionally conservative: it reports only errors it can localize through
 declared constraints, relaxed parses, or mal-rules. This gives up coverage in
 exchange for trustworthiness. A missing parse is not treated as proof of a
@@ -2174,7 +2228,8 @@ the current grammar. For each ungrammatical case, the detail column names a subs
 the engine's reported violation message or rule must contain, verifying not only the verdict
 but the explanation. A Swedish corpus (\texttt{test/corpus.sv.txt}, 77 cases) follows the
 same format and exercises the Swedish fragment's gender, number, and definiteness
-constraints.}
+constraints; a Russian corpus (\texttt{test/corpus.ru.txt}, 42 cases) exercises case,
+animacy, and subject--verb agreement.}
 \end{table}
 
 This corpus is an \emph{engineered} regression suite. Every ungrammatical case was
@@ -2252,12 +2307,72 @@ The probe set is held out with respect to the \emph{rule inventory}, not with re
 the author: the sentences were written by the grammar's author against the vocabulary
 list, and in-vocabulary by construction. It therefore measures the engine's behavior on
 untuned input shapes, not its coverage of naturally occurring error distributions. The
-genuine blind evaluation remains future work: annotated learner text sampled from a
+blind evaluation of the engine's \emph{diagnoses} on naturally occurring errors remains future work: annotated learner text sampled from a
 corpus such as FCE or Lang-8, with the abstention rate on out-of-grammar errors tracked
 separately from true negatives. The probe set's contribution is narrower but real: it
 quantifies the design's central promise---flags are precise (96.9\%), abstention does the
 work coverage gaps would otherwise push onto false claims---and it converts two latent
 coverage gaps into named, reproducible findings.
+
+\subsection{External validation against Universal Dependencies}
+\label{sec:ud}
+
+The probe set above is held out from the rules but not from the author, and it lives
+entirely in languages I speak. The third fragment removes that comfort: I cannot label
+Russian sentences from native judgment, so a corpus I write cannot tell me whether the
+Russian morphology is correct. The engine's analyses are therefore checked against an
+external gold standard it was never tuned to---the Universal Dependencies treebanks
+\cite{nivre2020ud}, which annotate attested text with lemma, part of speech, and
+morphological features under one cross-linguistic scheme.
+
+The check (\texttt{scripts/ud-check.ts}, enforced by \texttt{test/ud.test.ts}) is a
+token-level morphology audit. A hand-written CoNLL-U reader yields each token's gold
+analysis, and a small table maps the treebank's universal features onto the fragment's own
+feature names. A token is held to gold only when it is genuinely \emph{in coverage}: the
+lexicon must know the surface, the engine must produce an analysis in the gold part of
+speech, and every gold feature value must lie inside the fragment's modeled domain. A
+Russian genitive, an English participle, or a category the fragment treats as closed-class
+is out of scope and abstained on, not counted as a failure. On the tokens that remain, the
+engine must offer at least one analysis agreeing with gold on category and on every modeled
+feature, where an unset feature is read as ``no claim'' and so never conflicts. The audit
+grades the engine only where it claims to operate---the same honesty rule the diagnostics
+follow.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Fragment & In-coverage tokens & Agreement \\
+\midrule
+English (\texttt{en\_ewt})       & 2149 & 100\% \\
+Swedish (\texttt{sv\_talbanken}) &  785 & 100\% \\
+Russian (\texttt{ru\_gsd})       &   84 & 100\% \\
+\bottomrule
+\end{tabular}
+\caption{Token-level morphology audit against UD test splits. ``In-coverage'' counts the
+tokens whose surface the lexicon knows and whose gold analysis uses only features the
+fragment models; on those the engine agrees with gold on category and every modeled
+feature. The remaining tokens---unknown vocabulary, or analyses using unmodeled features
+such as the Russian oblique cases---are out of scope, as expected for a deliberately small
+fragment. Russian coverage is thin because the treebank is general text and the lexicon is
+small, but the agreement is exact.}
+\end{table}
+
+The audit has already earned its place. It flagged the Swedish second-person pronoun
+\emph{ni}, which the lexicon had pinned to plural; \emph{ni} is in fact number-flexible,
+serving also as a polite singular, exactly like English \emph{you}, which the lexicon
+already leaves number-underspecified. The fix relaxes an over-specification rather than
+adding coverage, and it is precisely the kind of error an author's own tests cannot find,
+because the author writes them with the same blind spot the grammar has.
+
+The instrument has clear limits. A treebank contains only well-formed sentences, so it can
+confirm that the analyses the engine produces are correct but cannot test the engine's
+error messages, spans, or repairs; that is the regression corpus's role. It is also a
+dev-time check: the treebanks are read by the hand-written parser, kept out of the
+repository, and never shipped with the engine. A blind evaluation of the full diagnostic
+loop, on annotated learner text, is still future work. What the audit settles is the half
+that matters most in a language the author cannot proofread: that the morphology the engine
+asserts agrees, exactly, with independently annotated truth.
 
 \section{Conclusion}
 
@@ -2280,7 +2395,10 @@ proposed correction, a reproducible evaluation criterion, a generator of labeled
 data. The held-out evaluation in Section~\ref{sec:probeset} is a small demonstration of
 the same point turned inward---because the engine's claims are explicit, its precision
 and its abstentions can be measured, and its failures arrive as named, reproducible
-findings rather than as silent drift.
+findings rather than as silent drift. Because those analyses are explicit, they can also be
+checked token-by-token against external gold annotations the grammars were never tuned to:
+an author-independent test (Section~\ref{sec:ud}) that has already corrected one
+over-specified lexical entry.
 
 \bibliographystyle{plain}
 \bibliography{references}

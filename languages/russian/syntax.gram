@@ -46,8 +46,16 @@ VP -> V
 # neuters the accusative is syncretic with the nominative (журнал, окно), so those
 # never clash; feminines (книга/книгу) and animate masculines (кот/кота) carry a
 # distinct accusative, so a nominative object there is caught.
+#
+# Only a transitive verb licenses an object: <valency>=tr gates this rule, so an
+# intransitive verb with an object (гулять книгу) finds no spanning parse and the
+# engine abstains (no-analysis) rather than over-generating a grammatical verdict.
+# It is a plain constraint, not a diagnostic: the only repair is dropping the
+# object, and there is no fix primitive for deletion yet, so flagging it would
+# promise a fix the engine cannot generate.
 VP -> V NP
     <VP vform> = <V vform>
     <VP pers>  = <V pers>
     <VP num>   = <V num>
+    <V valency> = tr
     <NP case>  = acc   ! "the direct object must be accusative"  fix: agree(Pron, case=acc)

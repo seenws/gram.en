@@ -67,6 +67,11 @@ none | собака читать
 none | мальчик книга кошка
 none | собаку
 
+# --- out of coverage: intransitive verb given a direct object -> abstain ------
+# гулять/работать do not license an object; no drop-object fix exists, so abstain.
+none | девочка гуляет книгу
+none | мальчик работает дом
+
 # --- unknown words ------------------------------------------------------------
 unknown | собака бежит | бежит
 unknown | мальчик любит кошку | любит

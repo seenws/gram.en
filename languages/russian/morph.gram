@@ -27,19 +27,20 @@
     +N+Acc+Sg : у  <gender>=fem <num>=sg <case>=acc <pers>=3   # собаку
     +N+Nom+Pl : ы  <gender>=fem <num>=pl <case>=nom <pers>=3   # собаки (ы -> и after к)
 
-# Masculine animate, consonant stem (кот, студент, мальчик). The accusative takes
-# the genitive ending -а -- the animacy contrast ("девочка знает кота").
-%lex N-masc-anim : N
-    +N+Nom+Sg :    <gender>=masc <num>=sg <case>=nom <anim>=anim <pers>=3   # кот
-    +N+Acc+Sg : а  <gender>=masc <num>=sg <case>=acc <anim>=anim <pers>=3   # кота
-    +N+Nom+Pl : ы  <gender>=masc <num>=pl <case>=nom <anim>=anim <pers>=3   # коты
-
-# Masculine inanimate, consonant stem (журнал, стол). The accusative is identical
-# to the nominative (both bare stem), so one surface yields both analyses.
-%lex N-masc-inan : N
-    +N+Nom+Sg :    <gender>=masc <num>=sg <case>=nom <anim>=inan <pers>=3   # журнал
-    +N+Acc+Sg :    <gender>=masc <num>=sg <case>=acc <anim>=inan <pers>=3   # журнал (= nom)
-    +N+Nom+Pl : ы  <gender>=masc <num>=pl <case>=nom <anim>=inan <pers>=3   # журналы
+# Masculine hard (consonant) stem, both animacies (кот, студент / журнал, стол).
+# Animacy is NOT baked into the declension -- it is a lexical feature on the stem
+# (see lexicon.tsv) that selects the accusative allomorph by unification. The
+# paradigm offers BOTH accusatives -- the genitive-like -а of animates (кот -> кота)
+# and the bare nominative-syncretic form of inanimates (журнал) -- each tagged with
+# the animacy it belongs to. A stem's <anim> unifies with one and clashes with the
+# other, so the right form survives and the wrong one is dropped. This keeps a
+# single masculine declension instead of splitting it per animacy (and, later, per
+# soft/-й stem), so animacy stays an ordinary feature usable beyond morphology.
+%lex N-masc-hard : N
+    +N+Nom+Sg :    <gender>=masc <num>=sg <case>=nom <pers>=3              # кот, журнал
+    +N+Acc+Sg : а  <gender>=masc <num>=sg <case>=acc <anim>=anim <pers>=3  # кота (animate: acc = gen)
+    +N+Acc+Sg :    <gender>=masc <num>=sg <case>=acc <anim>=inan <pers>=3  # журнал (inanimate: acc = nom)
+    +N+Nom+Pl : ы  <gender>=masc <num>=pl <case>=nom <pers>=3              # коты, журналы
 
 # Neuter 2nd declension, -о stem (окно, письмо). Inanimate: accusative = nominative.
 %lex N-neut-o : N
@@ -49,10 +50,14 @@
 
 # --- Verb conjugation ---------------------------------------------------------
 
-# 1st conjugation, vowel (-а) stem: читать, знать, работать. The present tense
-# agrees with the subject in person AND number -- six distinct endings -- and all
-# of them concatenate cleanly onto the -а stem (чита+ет -> читает), so this
-# paradigm needs no spelling rule.
+# Verbs with a productive -aj- present stem: the stem ends in the vowel -а and the
+# present endings concatenate onto it cleanly (чита+ет -> читает), so this paradigm
+# needs no spelling rule. The name describes that form generation, NOT the textbook
+# label "verbs in -ать": the infinitive ending does not determine the conjugation
+# (писать -> пишу mutates the stem, держать -> держу is 2nd conjugation), so those
+# verbs will want their own paradigms. The present agrees with the subject in person
+# AND number -- six distinct endings. Aspect and valency are lexical, not part of
+# this paradigm; they ride on the stem in lexicon.tsv.
 %lex V-aj : V
     +V+Inf      : ть   <vform>=bare                                # читать
     +V+Pres+1Sg : ю    <vform>=fin <tense>=pres <pers>=1 <num>=sg  # читаю
