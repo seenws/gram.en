@@ -15,11 +15,13 @@ export type lang_spec = {
     manifest: string; // entry .gram inside that directory
     label: string; // display name for the browser switcher
     corpus: string; // regression corpus filename under test/
+    ud?: string; // optional UD treebank filename under tools/ud/ (dev-time validation)
 };
 
 export const LANGUAGES: lang_spec[] = [
-    { code: "en", dir: "english", manifest: "en.gram", label: "English", corpus: "corpus.txt" },
-    { code: "sv", dir: "swedish", manifest: "sv.gram", label: "Svenska", corpus: "corpus.sv.txt" },
+    { code: "en", dir: "english", manifest: "en.gram", label: "English", corpus: "corpus.txt", ud: "en_ewt-ud-test.conllu" },
+    { code: "sv", dir: "swedish", manifest: "sv.gram", label: "Svenska", corpus: "corpus.sv.txt", ud: "sv_talbanken-ud-test.conllu" },
+    { code: "ru", dir: "russian", manifest: "ru.gram", label: "Русский", corpus: "corpus.ru.txt", ud: "ru_gsd-ud-test.conllu" },
 ];
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -37,6 +39,12 @@ export function lang_dir(spec: lang_spec): string {
 
 export function corpus_path(spec: lang_spec): string {
     return join(root, "test", spec.corpus);
+}
+
+// Path to a language's UD treebank under tools/ud/ (gitignored, dev-time only).
+// Undefined when the language declares no treebank.
+export function ud_path(spec: lang_spec): string | undefined {
+    return spec.ud ? join(root, "tools", "ud", spec.ud) : undefined;
 }
 
 // A Node file resolver rooted at a language's directory, for %include / %import.

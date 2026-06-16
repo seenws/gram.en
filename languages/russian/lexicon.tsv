@@ -1,0 +1,46 @@
+# Open-class stems, bulk-loaded into %lex Root via `%import lexicon.tsv`.
+# Columns are TAB-separated:  <stem>  <paradigm>  [<feature>=value ...]
+#
+# The stem is consonant-final for -а feminines and bare masculines (собак, журнал),
+# and the paradigm supplies the endings. Gender and animacy come from the paradigm
+# (N-fem-a / N-masc-anim / N-masc-inan / N-neut-o), so a row only adds <lemma>.
+#
+# Future: the seed sticks to regular stems whose nominative plural is the productive
+# -ы/-а. Stems with irregular plurals (дом -> дома, брат -> братья, город -> города)
+# are kept singular here; soft-sign and -ь stems (день, мать) want their own paradigms.
+
+# --- Nouns: feminine 1st declension (-а) --------------------------------------
+собак	N-fem-a	<lemma>=собака
+кошк	N-fem-a	<lemma>=кошка
+книг	N-fem-a	<lemma>=книга
+машин	N-fem-a	<lemma>=машина
+школ	N-fem-a	<lemma>=школа
+девочк	N-fem-a	<lemma>=девочка
+
+# --- Nouns: masculine animate (acc = gen, -а) ---------------------------------
+кот	N-masc-anim	<lemma>=кот
+студент	N-masc-anim	<lemma>=студент
+мальчик	N-masc-anim	<lemma>=мальчик
+брат	N-masc-anim	<lemma>=брат
+врач	N-masc-anim	<lemma>=врач
+
+# --- Nouns: masculine inanimate (acc = nom) -----------------------------------
+журнал	N-masc-inan	<lemma>=журнал
+стол	N-masc-inan	<lemma>=стол
+магазин	N-masc-inan	<lemma>=магазин
+дом	N-masc-inan	<lemma>=дом
+
+# --- Nouns: neuter 2nd declension (-о) ----------------------------------------
+окн	N-neut-o	<lemma>=окно
+письм	N-neut-o	<lemma>=письмо
+
+# --- Verbs: 1st conjugation (-ать) --------------------------------------------
+чита	V-aj	<lemma>=читать
+зна	V-aj	<lemma>=знать
+дела	V-aj	<lemma>=делать
+слуша	V-aj	<lemma>=слушать
+встреча	V-aj	<lemma>=встречать
+понима	V-aj	<lemma>=понимать
+работа	V-aj	<lemma>=работать
+гуля	V-aj	<lemma>=гулять
+игра	V-aj	<lemma>=играть

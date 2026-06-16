@@ -1,0 +1,31 @@
+# Closed-class lexicon (%include'd from ru.gram)
+#
+# Personal pronouns and the coordinating conjunction. Pronouns are suppletive
+# across case (я/меня, он/его), so they stay explicit -- morphology has nothing to
+# add. `case` is nom for the subject form, acc for the object form; `pers` and
+# `num` drive the full subject-verb agreement in syntax.gram. Their lemmas are the
+# nominative form, shared across the case pair, so a case repair can map меня -> я.
+#
+# Future: genitive/dative/instrumental/prepositional forms (меня doubles as
+# genitive already), the reflexive себя, and possessives are later increments.
+
+# Pronoun   pers      num      case        gender         lemma
+я     : Pron  <pers>=1  <num>=sg  <case>=nom                  <lemma>=я
+меня  : Pron  <pers>=1  <num>=sg  <case>=acc                  <lemma>=я
+ты    : Pron  <pers>=2  <num>=sg  <case>=nom                  <lemma>=ты
+тебя  : Pron  <pers>=2  <num>=sg  <case>=acc                  <lemma>=ты
+он    : Pron  <pers>=3  <num>=sg  <case>=nom  <gender>=masc   <lemma>=он
+она   : Pron  <pers>=3  <num>=sg  <case>=nom  <gender>=fem    <lemma>=она
+оно   : Pron  <pers>=3  <num>=sg  <case>=nom  <gender>=neu    <lemma>=оно
+его   : Pron  <pers>=3  <num>=sg  <case>=acc                  <lemma>=он
+её    : Pron  <pers>=3  <num>=sg  <case>=acc                  <lemma>=она
+мы    : Pron  <pers>=1  <num>=pl  <case>=nom                  <lemma>=мы
+нас   : Pron  <pers>=1  <num>=pl  <case>=acc                  <lemma>=мы
+вы    : Pron  <pers>=2  <num>=pl  <case>=nom                  <lemma>=вы
+вас   : Pron  <pers>=2  <num>=pl  <case>=acc                  <lemma>=вы
+они   : Pron  <pers>=3  <num>=pl  <case>=nom                  <lemma>=они
+их    : Pron  <pers>=3  <num>=pl  <case>=acc                  <lemma>=они
+
+# Coordinating conjunction ("собака гуляет и кошка играет"). No number feature: a
+# coordinated subject is not modelled in this slice, so `и` only joins clauses.
+и : Conj

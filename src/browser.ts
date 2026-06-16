@@ -6,10 +6,12 @@ import { analyze, type analysis } from "./analyze.ts";
 // text loader inlines them as strings.
 import en_text from "../languages/english/en.flat.gram";
 import sv_text from "../languages/swedish/sv.flat.gram";
+import ru_text from "../languages/russian/ru.flat.gram";
 
 const grammars: Record<string, grammar> = {
     en: parse_grammar(en_text),
     sv: parse_grammar(sv_text),
+    ru: parse_grammar(ru_text),
 };
 
 // check(sentence) keeps the original single-argument signature (defaults to

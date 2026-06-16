@@ -13,6 +13,7 @@
     "bench": "node --experimental-strip-types scripts/bench.ts",
     "corpus": "node --experimental-strip-types scripts/corpus.ts",
     "eval": "node --experimental-strip-types scripts/eval.ts",
+    "ud": "node --experimental-strip-types scripts/ud-check.ts",
     "flatten": "node --experimental-strip-types scripts/flatten.ts",
     "build": "npm run flatten && esbuild src/browser.ts --bundle --format=iife --global-name=GrammarEngine --loader:.gram=text --outfile=dist/engine.js",
     "serve": "node --experimental-strip-types scripts/serve.ts"

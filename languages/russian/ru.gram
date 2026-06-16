@@ -1,0 +1,59 @@
+# Russian grammar -- manifest.
+#
+# Third language for the engine. Where Swedish stressed gender + definiteness,
+# Russian stresses CASE: nominal endings fuse case and number, and the same
+# machinery that handled Swedish pronoun case (nom/acc) now runs over full noun
+# declensions. The article system disappears entirely (Russian has no articles),
+# so this fragment is simpler at the top of the NP and much heavier in morphology.
+#
+# Syntax of this DSL is documented in en.gram; the same parser serves all three.
+#
+# Scope of this first slice
+# -------------------------
+#   * Nominative and accusative only (the other four cases -- genitive, dative,
+#     instrumental, prepositional -- and adjective concord are later increments).
+#   * Animacy: an animate masculine noun takes the genitive ending in the
+#     accusative (кот -> кота); inanimate masculines and neuters leave the
+#     accusative identical to the nominative (журнал, окно). See morph.gram.
+#   * Full present-tense subject-verb agreement in person AND number (six endings:
+#     читаю / читаешь / читает / читаем / читаете / читают), unlike English's lone
+#     3sg contrast -- so agreement is two ordinary equations, no precomputed `vagr`.
+#   * Zero copula: Russian has no present-tense 'to be', so predication is bare
+#     subject + predicate-nominal ("он студент" = "he [is a] student").
+#
+# Known non-coverage (honest abstention, NOT claims of ungrammaticality)
+# ----------------------------------------------------------------------
+#   * Free word order. Case-marking makes OVS/OSV grammatical in Russian; this CFG
+#     fixes SVO, so a valid scrambled sentence parses as `no-analysis` rather than
+#     being (wrongly) flagged. Stated up front so the abstentions are expected.
+#   * Accusative plural (which re-introduces animacy across all genders) is out;
+#     a plural object therefore abstains rather than risk a false diagnosis.
+#   * Aspect (perfective/imperfective), past tense, and prepositions are unmodelled.
+#
+# Features
+# --------
+#   num    = sg | pl            number
+#   pers   = 1 | 2 | 3          person (nouns are 3; pronouns carry their own)
+#   gender = masc | fem | neu   grammatical gender (carried on nouns; concord later)
+#   case   = nom | acc          grammatical case (this slice)
+#   anim   = anim | inan        animacy (selects the masculine accusative form)
+#   tense  = pres | past        finite tense (only pres is built out here)
+#   vform  = bare | fin         verb form (infinitive vs finite)
+
+%feature num    : sg | pl
+%feature pers   : 1 | 2 | 3
+%feature gender : masc | fem | neu
+%feature case   : nom | acc
+%feature anim   : anim | inan
+%feature tense  : pres | past
+%feature vform  : bare | fin
+%feature lemma  : *
+
+# Russian parses from S and splits on whitespace. No clitics and no contractions.
+%start S
+%tokenizer whitespace
+
+%include closed.gram
+%include morph.gram
+%import  lexicon.tsv
+%include syntax.gram

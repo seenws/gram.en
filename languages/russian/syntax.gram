@@ -1,0 +1,53 @@
+# Grammar rules (%include'd from ru.gram)
+
+# A clause is subject + predicate. Russian present-tense verbs agree with the
+# subject in BOTH person and number -- a full six-way paradigm (я читаю, ты
+# читаешь, он читает, мы читаем, вы читаете, они читают), unlike English's lone
+# 3sg contrast -- so agreement is two plain equations rather than a precomputed
+# `vagr`. The subject is nominative; the head verb must be finite.
+S -> NP VP
+    <NP pers> = <VP pers>   ! "subject-verb agreement (person)"  fix: agree(V)
+    <NP num>  = <VP num>    ! "subject-verb agreement (number)"  fix: agree(V)
+    <NP case> = nom         ! "the subject must be nominative"   fix: agree(Pron, case=nom)
+    <VP vform> = fin
+
+# Zero copula: Russian has no present-tense verb 'to be', so predication is bare
+# subject + predicate-nominal ("он студент" = "he [is a] student"). Both sit in the
+# nominative; a predicate nominal does NOT agree with the subject in gender or
+# number ("она врач" is fine), so there is no agreement equation here. The two NP
+# daughters are addressed by aliases (l, r) since addressing is positional.
+S -> l:NP r:NP
+    <l case> = nom   ! "the subject must be nominative"           fix: agree(Pron, case=nom)
+    <r case> = nom   ! "a predicate nominal must be nominative"   fix: agree(Pron, case=nom)
+
+# Clause coordination ("мальчик читает и девочка играет").
+S -> S Conj S
+
+# A bare noun is a complete noun phrase -- Russian has no articles. The NP inherits
+# the noun's number, person, gender, and case.
+NP -> N
+    <NP num>    = <N num>
+    <NP pers>   = <N pers>
+    <NP gender> = <N gender>
+    <NP case>   = <N case>
+
+NP -> Pron
+    <NP num>    = <Pron num>
+    <NP pers>   = <Pron pers>
+    <NP gender> = <Pron gender>
+    <NP case>   = <Pron case>
+
+VP -> V
+    <VP vform> = <V vform>
+    <VP pers>  = <V pers>
+    <VP num>   = <V num>
+
+# Transitive clause. The direct object is accusative. For inanimate masculines and
+# neuters the accusative is syncretic with the nominative (журнал, окно), so those
+# never clash; feminines (книга/книгу) and animate masculines (кот/кота) carry a
+# distinct accusative, so a nominative object there is caught.
+VP -> V NP
+    <VP vform> = <V vform>
+    <VP pers>  = <V pers>
+    <VP num>   = <V num>
+    <NP case>  = acc   ! "the direct object must be accusative"  fix: agree(Pron, case=acc)

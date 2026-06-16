@@ -1,0 +1,73 @@
+# Regression corpus for the Russian fragment.
+#
+# Format:  <label> | <sentence> [| <detail>]
+#   ok      -> grammatical
+#   bad     -> ungrammatical; detail = substring the violation message/rule must contain
+#   none    -> no-analysis (out of coverage, NOT a claim of ungrammaticality)
+#   unknown -> unknown-word; detail = comma-separated expected unknown words
+#
+# This is the correctness net: grammar/lexicon changes must keep every line green.
+# Every `bad` line is ungrammatical in ANY Russian word order (not merely non-SVO),
+# so the engine is never asked to flag a valid scrambled sentence.
+
+# --- grammatical: intransitive clauses, noun subjects, person/number agreement -
+ok | собака гуляет
+ok | мальчик работает
+ok | студент читает
+ok | девочка играет
+ok | собаки гуляют
+ok | студенты работают
+ok | девочки играют
+
+# --- grammatical: pronoun subjects, full six-way agreement --------------------
+ok | я читаю
+ok | ты читаешь
+ok | он читает
+ok | она работает
+ok | мы гуляем
+ok | вы читаете
+ok | они играют
+
+# --- grammatical: transitive clauses, accusative objects ----------------------
+ok | мальчик читает книгу
+ok | я читаю книгу
+ok | девочка знает кота
+ok | мы знаем мальчика
+ok | она встречает брата
+ok | студент читает журнал
+ok | девочка читает письмо
+ok | он понимает книгу
+
+# --- grammatical: zero copula (no present-tense 'to be') ----------------------
+ok | он студент
+ok | она девочка
+ok | брат врач
+ok | мальчик студент
+
+# --- grammatical: clause coordination -----------------------------------------
+ok | мальчик читает и девочка играет
+
+# --- ungrammatical: direct object is not accusative ---------------------------
+bad | мальчик читает книга | accusative
+bad | девочка знает кот | accusative
+bad | она встречает брат | accusative
+
+# --- ungrammatical: subject is not nominative ---------------------------------
+bad | кота читает книгу | nominative
+bad | его читает книгу | nominative
+
+# --- ungrammatical: subject-verb agreement ------------------------------------
+bad | я читает | agreement
+bad | собака читают | agreement
+bad | они читает | agreement
+bad | вы читаю | agreement
+
+# --- out of coverage: known words, no localizable diagnosis -> abstain --------
+none | собака читать
+none | мальчик книга кошка
+none | собаку
+
+# --- unknown words ------------------------------------------------------------
+unknown | собака бежит | бежит
+unknown | мальчик любит кошку | любит
+unknown | привет мир | привет, мир

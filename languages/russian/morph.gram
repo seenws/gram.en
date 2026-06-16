@@ -1,0 +1,70 @@
+# Open-class morphology (%include'd from ru.gram)
+#
+# Russian is fusional: one ending fuses case + number (and, on a verb, person +
+# number). Each paradigm below is a small case x number grid; the bulk noun and
+# verb STEMS live in lexicon.tsv (pulled in via `%import` from ru.gram), each row
+# naming the paradigm its stem inflects by.
+#
+# The accusative is where Russian animacy surfaces. An animate masculine noun
+# borrows the genitive ending in the accusative (кот -> кота); an inanimate
+# masculine or a neuter leaves the accusative identical to the nominative (журнал,
+# окно). That syncretism is encoded directly: the inanimate/neuter paradigms list
+# nominative and accusative as two entries with the same ending, so one surface
+# yields both analyses and the syntax picks the one it needs.
+
+# Consonants that block a following ы (the velars к г х and the hushers ж ш щ ч);
+# used by the spelling rule at the foot of the file.
+%class Hush : к | г | х | ж | ш | щ | ч
+
+# --- Noun declensions ---------------------------------------------------------
+
+# Feminine 1st declension, -а stem (собака, книга, девочка). Nominative -а,
+# accusative -у. The nominative plural -ы surfaces as -и after a velar/husher stem
+# (собак+ы -> собаки) via the spelling rule below. Feminine animacy does not split
+# the singular (the accusative is -у regardless), so all -а feminines share this.
+%lex N-fem-a : N
+    +N+Nom+Sg : а  <gender>=fem <num>=sg <case>=nom <pers>=3   # собака
+    +N+Acc+Sg : у  <gender>=fem <num>=sg <case>=acc <pers>=3   # собаку
+    +N+Nom+Pl : ы  <gender>=fem <num>=pl <case>=nom <pers>=3   # собаки (ы -> и after к)
+
+# Masculine animate, consonant stem (кот, студент, мальчик). The accusative takes
+# the genitive ending -а -- the animacy contrast ("девочка знает кота").
+%lex N-masc-anim : N
+    +N+Nom+Sg :    <gender>=masc <num>=sg <case>=nom <anim>=anim <pers>=3   # кот
+    +N+Acc+Sg : а  <gender>=masc <num>=sg <case>=acc <anim>=anim <pers>=3   # кота
+    +N+Nom+Pl : ы  <gender>=masc <num>=pl <case>=nom <anim>=anim <pers>=3   # коты
+
+# Masculine inanimate, consonant stem (журнал, стол). The accusative is identical
+# to the nominative (both bare stem), so one surface yields both analyses.
+%lex N-masc-inan : N
+    +N+Nom+Sg :    <gender>=masc <num>=sg <case>=nom <anim>=inan <pers>=3   # журнал
+    +N+Acc+Sg :    <gender>=masc <num>=sg <case>=acc <anim>=inan <pers>=3   # журнал (= nom)
+    +N+Nom+Pl : ы  <gender>=masc <num>=pl <case>=nom <anim>=inan <pers>=3   # журналы
+
+# Neuter 2nd declension, -о stem (окно, письмо). Inanimate: accusative = nominative.
+%lex N-neut-o : N
+    +N+Nom+Sg : о  <gender>=neu <num>=sg <case>=nom <anim>=inan <pers>=3   # окно
+    +N+Acc+Sg : о  <gender>=neu <num>=sg <case>=acc <anim>=inan <pers>=3   # окно (= nom)
+    +N+Nom+Pl : а  <gender>=neu <num>=pl <case>=nom <anim>=inan <pers>=3   # окна
+
+# --- Verb conjugation ---------------------------------------------------------
+
+# 1st conjugation, vowel (-а) stem: читать, знать, работать. The present tense
+# agrees with the subject in person AND number -- six distinct endings -- and all
+# of them concatenate cleanly onto the -а stem (чита+ет -> читает), so this
+# paradigm needs no spelling rule.
+%lex V-aj : V
+    +V+Inf      : ть   <vform>=bare                                # читать
+    +V+Pres+1Sg : ю    <vform>=fin <tense>=pres <pers>=1 <num>=sg  # читаю
+    +V+Pres+2Sg : ешь  <vform>=fin <tense>=pres <pers>=2 <num>=sg  # читаешь
+    +V+Pres+3Sg : ет   <vform>=fin <tense>=pres <pers>=3 <num>=sg  # читает
+    +V+Pres+1Pl : ем   <vform>=fin <tense>=pres <pers>=1 <num>=pl  # читаем
+    +V+Pres+2Pl : ете  <vform>=fin <tense>=pres <pers>=2 <num>=pl  # читаете
+    +V+Pres+3Pl : ют   <vform>=fin <tense>=pres <pers>=3 <num>=pl  # читают
+
+# Spelling rule: ы -> и after a velar or husher (the Russian "и after к/г/х/ж/ш/щ/ч"
+# rule). Fires on the nominative plural of velar/husher stems (собак+ы -> собаки,
+# девочк+ы -> девочки); stems ending in any other consonant keep -ы (журнал+ы ->
+# журналы, студент+ы -> студенты). Like the English/Swedish spelling rules it is
+# run backwards during analysis, and the lexicon filters any over-generation.
+%rule ы:и => Hush _
