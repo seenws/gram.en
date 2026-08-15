@@ -18,8 +18,6 @@ text → tokenizer → morphology → lexicon → parser (+ unification)
      → error detection → report
 ```
 
-The machinery is language-neutral; grammars are data. English, Swedish, and Russian fragments ship today.
-
 ## Demo
 
 ```console
@@ -51,7 +49,7 @@ Rule:      NP -> Art N
 Fix:       "en hund skäller"
 ```
 
-A failed parse is only reported as an error when the engine can localize it to a named constraint; otherwise it abstains:
+A failed parse is only reported as an error when the engine can localize it to a named constraint, otherwise it abstains.
 
 ```console
 $ npm run analyze "the dog glorps"
@@ -63,8 +61,6 @@ Verdict:   no analysis (out of coverage; not necessarily ungrammatical)
 
 Add `--trace` to any analysis to watch the morphology and Earley chart work on stderr.
 
-This behavior is due to the coverage problem which is explained in greater detail in the [project paper](notes/notes.pdf).
-
 There is also a browser demo (`index.html`): violations are underlined as you type, and clicking an underline shows
 the diagnosis with one-click fixes. `npm run build && npm run serve`, then open `http://localhost:8080`.
 
@@ -73,7 +69,7 @@ the diagnosis with one-click fixes. `npm run build && npm run serve`, then open 
 Requires Node ≥ 22.6 (the engine runs through native TypeScript type-stripping; no build step for local use).
 
 ```sh
-npm run analyze "the dog barks"   # analyze a sentence (--lang sv for Swedish)
+npm run analyze "the dog barks"   # analyze a sentence
 npm test                          # unit tests + per-language regression corpora
 npm run eval                      # held-out probe set (accuracy metrics)
 npm run bench                     # performance benchmarks
@@ -82,7 +78,6 @@ npm run serve                     # serve the browser demo on :8080
 ```
 
 Programmatic use:
-
 ```ts
 import { load_grammar } from "./src/languages.ts";
 import { analyze }      from "./src/analyze.ts";
@@ -190,8 +185,7 @@ index.html  browser demo (loads dist/engine.js)
 The accompanying paper covers the formal background. You are not required to have any previous knowledge outside of
 basic computer science to understand its contents. I've tried my best to make it pedagogical for readers without
 prior knowledge while remaining detailed as a formal paper, and it covers everything related to the design and
-implementation of the engine, including formal theory, design choices, and performance metrics.
+implementation of the engine, including formal theory, design choices, and performance metrics. Keep in mind it is not
+finished and is written by me as somebody who does not have a degree in linguistics or formal language theory.
 
 Source: [`notes/notes.tex`](notes/notes.tex) · Typeset PDF: [`notes/notes.pdf`](notes/notes.pdf)
-
-The notes are not required to use the engine; they document why it is built the way it is.
