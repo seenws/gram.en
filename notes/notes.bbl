@@ -1,0 +1,81 @@
+\begin{thebibliography}{10}
+
+\bibitem{bryant2019bea}
+Christopher Bryant, Mariano Felice, {\O}istein~E. Andersen, and Ted Briscoe.
+\newblock The {BEA}-2019 shared task on grammatical error correction.
+\newblock In {\em Proceedings of the Fourteenth Workshop on Innovative Use of
+  {NLP} for Building Educational Applications}, pages 52--75, Florence, Italy,
+  2019.
+
+\bibitem{copestake2002lkb}
+Ann Copestake.
+\newblock {\em Implementing Typed Feature Structure Grammars}.
+\newblock CSLI Publications, Stanford, CA, 2002.
+
+\bibitem{earley1970}
+Jay Earley.
+\newblock An efficient context-free parsing algorithm.
+\newblock {\em Communications of the {ACM}}, 13(2):94--102, 1970.
+
+\bibitem{kaplan1994regular}
+Ronald~M. Kaplan and Martin Kay.
+\newblock Regular models of phonological rule systems.
+\newblock {\em Computational Linguistics}, 20(3):331--378, 1994.
+
+\bibitem{kasper1986logical}
+Robert~T. Kasper and William~C. Rounds.
+\newblock A logical semantics for feature structures.
+\newblock In {\em Proceedings of the 24th Annual Meeting of the Association for
+  Computational Linguistics}, pages 257--266, 1986.
+
+\bibitem{milkowski2010languagetool}
+Marcin Mi{\l}kowski.
+\newblock Developing an open-source, rule-based proofreading tool.
+\newblock {\em Software: Practice and Experience}, 40(7):543--566, 2010.
+
+\bibitem{ng2014conll}
+Hwee~Tou Ng, Siew~Mei Wu, Ted Briscoe, Christian Hadiwinoto, Raymond~Hendy
+  Susanto, and Christopher Bryant.
+\newblock The {CoNLL}-2014 shared task on grammatical error correction.
+\newblock In {\em Proceedings of the Eighteenth Conference on Computational
+  Natural Language Learning: Shared Task}, pages 1--14, Baltimore, Maryland,
+  2014.
+
+\bibitem{nivre2020ud}
+Joakim Nivre, Marie-Catherine de~Marneffe, Filip Ginter, Jan Haji{\v{c}},
+  Christopher~D. Manning, Sampo Pyysalo, Sebastian Schuster, Francis Tyers, and
+  Daniel Zeman.
+\newblock Universal dependencies v2: An evergrowing multilingual treebank
+  collection.
+\newblock In {\em Proceedings of the Twelfth Language Resources and Evaluation
+  Conference ({LREC})}, pages 4034--4043, Marseille, France, 2020.
+
+\bibitem{ploeger2025typdiv}
+Esther Ploeger, Wessel Poelman, Andreas~Holck H{\o}eg-Petersen, Anders
+  Schlichtkrull, Miryam de~Lhoneux, and Johannes Bjerva.
+\newblock A principled framework for evaluating on typologically diverse
+  languages.
+\newblock {\em Computational Linguistics}, 2025.
+
+\bibitem{pollard1994hpsg}
+Carl Pollard and Ivan~A. Sag.
+\newblock {\em Head-Driven Phrase Structure Grammar}.
+\newblock University of Chicago Press, Chicago, 1994.
+
+\bibitem{ranta2004gf}
+Aarne Ranta.
+\newblock Grammatical framework: A type-theoretical grammar formalism.
+\newblock {\em Journal of Functional Programming}, 14(2):145--189, 2004.
+
+\bibitem{shieber1984patr}
+Stuart~M. Shieber.
+\newblock The design of a computer language for linguistic information.
+\newblock In {\em Proceedings of the Tenth International Conference on
+  Computational Linguistics ({COLING})}, pages 362--366, 1984.
+
+\bibitem{shieber1985cf}
+Stuart~M. Shieber.
+\newblock Evidence against the context-freeness of natural language.
+\newblock {\em Linguistics and Philosophy}, 8(3):333--343, 1985.
+
+\end{thebibliography}

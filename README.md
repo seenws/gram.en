@@ -1,8 +1,3 @@
-![gram.en banner image](./assets/gramen.png)
-*"Dude, why an elephant?"*
-
-*"They're cute."*
-
 # gram.en
 
 **gram.en** is an explainable grammatical analysis engine that takes a different approach from statistical or

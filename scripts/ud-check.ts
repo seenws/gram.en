@@ -1,9 +1,3 @@
-// Dev-time validation report: audits the engine's morphology against a Universal
-// Dependencies treebank and prints coverage + any disagreements with gold. This is
-// an external examiner -- it reads gold annotations the engine was never tuned to,
-// and (unlike the hand-authored corpus) it cannot test diagnostics, only whether
-// the analyses the engine *does* produce agree with attested truth.
-//
 // The treebanks live under tools/ud/ (gitignored, downloaded on demand); a missing
 // file is a friendly skip, not an error.
 //

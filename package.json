@@ -11,6 +11,7 @@
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "analyze": "node --experimental-strip-types src/cli.ts",
     "bench": "node --experimental-strip-types scripts/bench.ts",
+    "bench:scale": "node --experimental-strip-types scripts/bench-scale.ts",
     "corpus": "node --experimental-strip-types scripts/corpus.ts",
     "eval": "node --experimental-strip-types scripts/eval.ts",
     "ud": "node --experimental-strip-types scripts/ud-check.ts",

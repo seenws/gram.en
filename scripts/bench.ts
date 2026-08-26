@@ -244,21 +244,26 @@ console.log(`  load: ${ms(load.median)} ms (median, n=${load.iters})  | ` +
 
 const sentences2 = workload(words);
 
-// warm the JIT over the whole workload, then time each call once
+// warm the JIT over the whole workload, then time each call across several
+// passes. One timed pass gives only n=14 per input class, so a per-class p95 is
+// just "worst of 14" -- too noisy to report. Pooling passes stabilises it.
 for (let pass = 0; pass < 3; pass++) for (const s of sentences2) analyze(big_g, s.text);
 
+const TIMED_PASSES = 8;
 const all: number[] = [];
 const by_cat = new Map<string, number[]>();
 const verdicts = new Map<string, number>();
 
-for (const s of sentences2) {
-    const t0 = performance.now();
-    const a = analyze(big_g, s.text);
-    const dt = performance.now() - t0;
+for (let pass = 0; pass < TIMED_PASSES; pass++) {
+    for (const s of sentences2) {
+        const t0 = performance.now();
+        const a = analyze(big_g, s.text);
+        const dt = performance.now() - t0;
 
-    all.push(dt);
-    (by_cat.get(s.cat) ?? by_cat.set(s.cat, []).get(s.cat)!).push(dt);
-    verdicts.set(a.verdict, (verdicts.get(a.verdict) ?? 0) + 1);
+        all.push(dt);
+        (by_cat.get(s.cat) ?? by_cat.set(s.cat, []).get(s.cat)!).push(dt);
+        if (pass === 0) verdicts.set(a.verdict, (verdicts.get(a.verdict) ?? 0) + 1);
+    }
 }
 
 all.sort((a, b) => a - b);
