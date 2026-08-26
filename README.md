@@ -87,8 +87,8 @@ const result = analyze(g, "the dog bark");
 
 | Stage | Responsibility |
 |---|---|
-| **Tokenizer** | Splits raw text into tokens, including contractions (`don't → do + n't`). Declared per grammar. |
-| **Morphology** | A trie-backed finite-state transducer maps surface words to `(lemma, category, features)` analyses, with morphophonemic rewrite rules (`liked → like + ed`, `tried → try + ed`). |
+| **Tokenizer** | Splits raw text into tokens, including contractions (`don't → do + n't`). These are declared per grammar (language). |
+| **Morphology** | A trie-backed finite-state transducer maps surface words to `(lemma, category, features)` analyzes, with morphophonemic rewrite rules (`liked → like + ed`, `tried → try + ed`). |
 | **Lexicon** | Attaches categories and feature structures to closed-class words, clitics, auxiliaries, and analyzed stems. |
 | **Parser** | An Earley chart parser over a context-free backbone; ambiguity is kept alive until structure resolves it. |
 | **Unification** | Feature equations on rules enforce agreement, case, and verb-form constraints. |
@@ -117,7 +117,7 @@ On the tokens inside each fragment's coverage, all three agree with the gold ann
 
 ## Writing grammars
 
-Grammars live in `.gram` files, a small declarative language for the properties of the target natural language:
+Grammars live in `.gram` files, a small declarative DSL for the properties of the target natural language:
 
 ```gram
 %feature num  : sg | pl
