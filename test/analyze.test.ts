@@ -258,6 +258,18 @@ test("`his`/`its` resolve both as possessive determiner and possessive pronoun",
     assert.equal(analyze(g, "the dog is its").verdict, "grammatical"); // Pron reading
 });
 
+test("a repair containing a clitic re-joins to the surface the user would write", () => {
+    // The tokenizer peels "'s" off "he's"; a repair that reaches the clitic entry
+    // must not hand it back as a separate word ("he 's happy").
+    const a = analyze(g, "he were happy");
+    const fixes = a.violations.flatMap((v) => v.fixes);
+
+    assert.ok(fixes.includes("he's happy"), `expected the re-joined clitic repair, got: ${fixes.join(" | ")}`);
+    for (const fix of fixes) {
+        assert.ok(!/ '/.test(fix), `clitic left detached in fix: ${fix}`);
+    }
+});
+
 test("possessive pronouns are not offered as case repairs for personal pronouns", () => {
     // distinct lemmas keep them out of nominative-/accusative-pronoun candidates
     const a = analyze(g, "me like dogs"); // wants "I like dogs", never "mine like dogs"

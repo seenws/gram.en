@@ -28,6 +28,7 @@
 #   pers = 1 | 2 | 3        person
 #   case = nom | acc        pronoun case (subject vs object)
 #   vagr = 3sg | n3sg       subject-verb agreement contrast (see note below)
+#   comp = suffix | periph  how the adjective compares (-er/-est vs more/most)
 #
 # Note on `vagr`: English present-tense agreement only contrasts 3rd-person-
 # singular ("barks") with everything else ("bark"). "Everything else" is
@@ -35,6 +36,12 @@
 # noun/pronoun carries a precomputed atomic `vagr` and verbs require a subject
 # `vagr`. Agreement is then plain equality. Revisit when a disjunctive value
 # type exists.
+#
+# Note on `comp`: English compares short adjectives with -er/-est ("bigger") and
+# longer ones with more/most ("more curious"), and the two are not interchange-
+# able ("*more big", "*curiouser"). The suffixal ones are a morphology paradigm
+# (Adj-reg), so the split is lexical: every adjective carries `comp`, and
+# more/most demand <comp>=periph. Suffixal adjectives then can't follow them.
 
 # Feature declarations. Declaring features turns on load-time validation: any
 # atomic value that isn't listed here (a typo like <num>=sgular) fails at load
@@ -48,6 +55,7 @@
 %feature vform   : bare | fin | pastp | prp
 %feature req     : bare | pastp | prp
 %feature degree  : pos | comp | sup
+%feature comp    : suffix | periph
 %feature lemma   : *
 
 # Engine configuration. English parses from S, splits on whitespace, and peels off

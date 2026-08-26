@@ -2,6 +2,11 @@
 
 S -> NP VP
     <NP vagr> = <VP vagr>   ! "subject-verb agreement (number/person)"  fix: agree(V) | agree(N)
+    # Past "be" agrees on a different partition than `vagr` (see clitics.gram),
+    # so it constrains the subject's num/pers directly. Every other verb leaves
+    # <VP num>/<VP pers> unset, which makes these two equations vacuous.
+    <NP num>  = <VP num>    ! "subject-verb agreement (number/person)"  fix: agree(Cop) | agree(Aux) | agree(N)
+    <NP pers> = <VP pers>   ! "subject-verb agreement (number/person)"  fix: agree(Cop) | agree(Aux) | agree(N)
     <NP case> = nom         ! "the subject must be a nominative pronoun"  fix: agree(Pron, case=nom)
     <VP vform> = fin        # the head of a main clause must be a finite verb
 
@@ -48,10 +53,12 @@ AdjP -> Adj
     <AdjP initial> = <Adj initial>
 AdjP -> Deg Adj
     <AdjP initial> = <Deg initial>
+    <Adj comp> = <Deg comp>  ! "use more/most with a long adjective, -er/-est with a short one"  fix: swap(Deg)
 AdjP -> Adj AdjList
     <AdjP initial> = <Adj initial>
 AdjP -> Deg Adj AdjList
     <AdjP initial> = <Deg initial>
+    <Adj comp> = <Deg comp>  ! "use more/most with a long adjective, -er/-est with a short one"  fix: swap(Deg)
 
 AdjList -> Adj
 AdjList -> Adj AdjList
@@ -93,15 +100,23 @@ VP -> V NP
 # the predicate adjective is invariant.
 VP -> Cop NP
     <VP vagr> = <Cop vagr>
+    <VP num>  = <Cop num>
+    <VP pers> = <Cop pers>
     <VP vform> = fin
 VP -> Cop Neg NP
     <VP vagr> = <Cop vagr>
+    <VP num>  = <Cop num>
+    <VP pers> = <Cop pers>
     <VP vform> = fin
 VP -> Cop AdjP
     <VP vagr> = <Cop vagr>
+    <VP num>  = <Cop num>
+    <VP pers> = <Cop pers>
     <VP vform> = fin
 VP -> Cop Neg AdjP
     <VP vagr> = <Cop vagr>
+    <VP num>  = <Cop num>
+    <VP pers> = <Cop pers>
     <VP vform> = fin
 
 # Auxiliaries take a verb phrase whose form they select (the modal/do want the
@@ -111,14 +126,20 @@ VP -> Cop Neg AdjP
 # satisfies S -> NP VP; agreement lives on the auxiliary.
 AuxP -> Aux VP
     <AuxP vagr> = <Aux vagr>
+    <AuxP num>  = <Aux num>
+    <AuxP pers> = <Aux pers>
     <AuxP vform> = fin
     <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree(V)
 AuxP -> Aux Neg VP
     <AuxP vagr> = <Aux vagr>
+    <AuxP num>  = <Aux num>
+    <AuxP pers> = <Aux pers>
     <AuxP vform> = fin
     <VP vform> = <Aux req>  ! "wrong verb form after the auxiliary"  fix: agree(V)
 VP -> AuxP
     <VP vagr> = <AuxP vagr>
+    <VP num>  = <AuxP num>
+    <VP pers> = <AuxP pers>
     <VP vform> = <AuxP vform>
 
 

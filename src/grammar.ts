@@ -36,6 +36,9 @@ export type grammar = {
     // grammar drop in without touching the engine.
     start: string;
     tokenize: tokenizer;
+    // The `%clitic` suffixes, kept so a repair suggestion can be re-joined the
+    // way the user would write it ("he's happy", not "he 's happy").
+    clitics: string[];
     // Morphophonemic rewrite rules (from %rule), in generation order. Applied
     // upward (apply_cascade_up) to a surface to recover the underlying strings
     // the lexicon FST recognises. Empty when the grammar declares no %rule.
@@ -432,6 +435,6 @@ export function parse_grammar(text: string, opts: parse_options = {}): grammar {
 
     return {
         lexicon, rules, malrules, nonterminals, features, classes, morph, morph_fst, morph_cascade,
-        start, tokenize,
+        start, tokenize, clitics,
     };
 }

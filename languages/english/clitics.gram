@@ -14,20 +14,48 @@ n't : Neg  <lemma>=not
 # Copulas -- forms of "be" predicating an NP of the subject (he's a dog). The
 # same forms are progressive auxiliaries below (he's barking); the parser keeps
 # whichever fits.
-'m  : Cop  <vagr>=n3sg  <lemma>=be
-'re : Cop  <vagr>=n3sg  <lemma>=be
-'s  : Cop  <vagr>=3sg   <lemma>=be
-is  : Cop  <vagr>=3sg   <lemma>=be
-am  : Cop  <vagr>=n3sg  <lemma>=be
-are : Cop  <vagr>=n3sg  <lemma>=be
+# "be" is the one English verb that agrees beyond the 3sg/n3sg contrast `vagr`
+# encodes: "am" is 1sg only, "are" is 2nd person or plural. `vagr`=n3sg alone
+# lets "you am" and "they am" through, so the present forms constrain num/pers
+# directly, the same way the past forms below do.
+#
+# "are" needs no separate 2nd-person reading: `you` is the only 2nd-person
+# pronoun and carries no `num` (deliberately -- see closed.gram), so the plural
+# reading unifies with it. Give `you` a number and both "are" and "were" below
+# need a <pers>=2 reading added back.
+is  : Cop  <num>=sg  <pers>=3  <lemma>=be
+am  : Cop  <num>=sg  <pers>=1  <lemma>=be
+are : Cop  <num>=pl            <lemma>=be
+'s  : Cop  <num>=sg  <pers>=3  <lemma>=be
+'m  : Cop  <num>=sg  <pers>=1  <lemma>=be
+'re : Cop  <num>=pl            <lemma>=be
+
+# Past "be". Its agreement partition is not `vagr`'s: "was" covers 1sg and 3sg
+# ("I was", "he was", "the dog was") while "were" covers 2nd person and all
+# plurals ("you were", "we were", "the dogs were"). That cuts across the
+# present-tense 3sg/n3sg split, so neither `vagr` value fits and a third
+# precomputed feature would be needed to state it as one equation. Instead the
+# disjunction is spelled as separate lexical readings constraining the subject's
+# `num`/`pers` directly -- the parser tries each and keeps whichever unifies.
+# S -> NP VP carries the matching <NP num>/<NP pers> equations; present-tense
+# verbs set neither, so those equations stay vacuous for everything else.
+was  : Cop  <num>=sg  <pers>=1  <lemma>=be
+was  : Cop  <num>=sg  <pers>=3  <lemma>=be
+were : Cop  <num>=pl            <lemma>=be
 
 # Progressive "be" + present participle: he is barking, I'm barking.
-'s  : Aux  <vagr>=3sg   <req>=prp  <lemma>=be
-'m  : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
-'re : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
-is  : Aux  <vagr>=3sg   <req>=prp  <lemma>=be
-am  : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
-are : Aux  <vagr>=n3sg  <req>=prp  <lemma>=be
+is  : Aux  <num>=sg  <pers>=3  <req>=prp  <lemma>=be
+am  : Aux  <num>=sg  <pers>=1  <req>=prp  <lemma>=be
+are : Aux  <num>=pl            <req>=prp  <lemma>=be
+'s  : Aux  <num>=sg  <pers>=3  <req>=prp  <lemma>=be
+'m  : Aux  <num>=sg  <pers>=1  <req>=prp  <lemma>=be
+'re : Aux  <num>=pl            <req>=prp  <lemma>=be
+
+# Past progressive: he was barking, the dogs were barking. Same readings as the
+# past copula above.
+was  : Aux  <num>=sg  <pers>=1  <req>=prp  <lemma>=be
+was  : Aux  <num>=sg  <pers>=3  <req>=prp  <lemma>=be
+were : Aux  <num>=pl            <req>=prp  <lemma>=be
 
 # Perfect "have" + past participle: I've liked, he has liked, I'd liked (had).
 've : Aux  <vagr>=n3sg  <req>=pastp  <lemma>=have

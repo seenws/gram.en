@@ -48,9 +48,9 @@
     +V+PrP       : ing <vform>=prp                           # barking (after be)
 
 %lex Adj-reg : Adj
-    +Adj      :     <degree>=pos    # big
-    +Adj+Comp : er  <degree>=comp   # bigger
-    +Adj+Sup  : est <degree>=sup    # biggest
+    +Adj      :     <degree>=pos   <comp>=suffix   # big
+    +Adj+Comp : er  <degree>=comp  <comp>=suffix   # bigger
+    +Adj+Sup  : est <degree>=sup   <comp>=suffix   # biggest
 
 # Spelling rules, applied in generation order (underlying -> surface) and run
 # backwards by morph_analyze to recover the underlying form during analysis.

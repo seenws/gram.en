@@ -166,3 +166,33 @@ none | with the dog
 # --- unknown words ------------------------------------------------------------
 unknown | glorp barks          | glorp
 unknown | the wug barks        | wug
+
+# --- grammatical: past "be" (agrees on a different partition than vagr) -------
+ok | I was happy
+ok | he was happy
+ok | the dog was happy
+ok | you were happy
+ok | we were happy
+ok | the dogs were happy
+ok | I was barking
+ok | the dogs were barking
+ok | he wasn't happy
+
+# --- ungrammatical: past "be" ------------------------------------------------
+bad | you was happy | agreement
+bad | we was happy | agreement
+bad | I were happy | agreement
+bad | the dog were happy | agreement
+bad | you am happy | agreement
+
+# --- grammatical: periphrastic comparison (more/most) ------------------------
+ok | he is curious
+ok | I was curious
+ok | a curious dog barks
+ok | he is more curious
+ok | the most curious dog barks
+ok | he is very curious
+
+# --- ungrammatical / out of coverage: comparison -----------------------------
+bad | he is more big | more/most
+unknown | he is curiouser | curiouser

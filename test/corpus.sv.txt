@@ -116,3 +116,21 @@ none | hunden hunden
 # --- unknown words ------------------------------------------------------------
 unknown | glorp skäller       | glorp
 unknown | hunden xyz          | xyz
+
+# --- grammatical: comparison (-are/-ast, umlauting stor, suppletive bra) ------
+ok | hunden är snällare
+ok | huset är snällare
+ok | en snällare hund skäller
+ok | den snällaste hunden skäller
+ok | hundarna är snällast
+ok | huset är större
+ok | huset är störst
+ok | det största huset är fint
+ok | de större hundarna skäller
+ok | hunden är bäst
+ok | den bästa hunden skäller
+ok | hunden är mycket snällare
+
+# --- ungrammatical / out of coverage: comparison ------------------------------
+bad | den snällast hunden skäller | definite
+unknown | hunden är storare | storare

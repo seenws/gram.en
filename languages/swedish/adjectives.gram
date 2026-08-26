@@ -1,18 +1,44 @@
 # Adjective closed-class bits (%include'd from sv.gram).
 #
-# Regular adjectives (stor, grön, ...) inflect via the Adj-reg paradigm in
-# morph.gram (gender/number/definiteness agreement). This file holds what
-# morphology can't derive: degree modifiers and indeclinable adjectives.
+# Regular adjectives (snäll, grön, ...) inflect via the Adj-reg paradigm in
+# morph.gram (gender/number/definiteness agreement, plus -are/-ast comparison).
+#
+# This file holds what morphology can't derive, namely degree modifiers and
+# indeclinable adjectives.
 
 # Degree modifiers ("en mycket stor hund", "ett för stort hus").
-mycket : Deg
-för    : Deg
-så     : Deg
+mycket   : Deg
+för      : Deg
+alltför  : Deg
+så       : Deg
+riktigt  : Deg
+väldigt  : Deg
+himla    : Deg
+otroligt : Deg
+jävligt  : Deg
+jäkligt  : Deg
+jädrigt  : Deg
+helt     : Deg
+ganska   : Deg
+rätt     : Deg
+
+# --- Irregular comparison -----------------------------------------------------
+# The comparative is indeclinable throughout ("en större hund", "ett större hus",
+# "de större hundarna"), so it sets only `degree`. The superlative keeps the
+# strong/weak split that rides on `def`: strong "störst" is predicative ("huset
+# är störst"), weak "största" attributive-definite ("det största huset").
+
+# "stor" umlauts (större/störst), which no suffix derives, so its comparison is
+# explicit here and the stem sits in Adj-nocomp so the engine never builds
+# "*storare". Same treatment as English "good"/better/best.
+större  : Adj  <degree>=comp                <lemma>=stor
+störst  : Adj  <degree>=sup   <def>=indef   <lemma>=stor
+största : Adj  <degree>=sup   <def>=def     <lemma>=stor
 
 # "bra" (good) is indeclinable: it never changes for gender/number/definiteness
 # ("en bra hund", "ett bra hus", "de bra hundarna"). Leaving gender/num/strong
 # unset lets it unify with any noun. Its comparison is suppletive (bättre/bäst).
-# Future: regular comparative/superlative (-are/-ast) is not modelled yet.
-bra    : Adj  <degree>=pos
-bättre : Adj  <degree>=comp
-bäst   : Adj  <degree>=sup
+bra     : Adj  <degree>=pos                 <lemma>=bra
+bättre  : Adj  <degree>=comp                <lemma>=bra
+bäst    : Adj  <degree>=sup   <def>=indef   <lemma>=bra
+bästa   : Adj  <degree>=sup   <def>=def     <lemma>=bra

@@ -8,25 +8,26 @@
 # class, kept out of lexicon.tsv exactly as in English). Bulk noun and verb stems
 # live in lexicon.tsv (pulled in via `%import lexicon.tsv` from sv.gram).
 #
-# Adj-reg: clean stem+t neuter (stor/stort/stora). Adj-dt: neuter doubles to +tt
-# with d-assimilation (röd/rött/röda). Future: irregular "liten/litet/lilla/små".
+# Adj-reg: clean stem+t neuter (snäll/snällt/snälla). Adj-dt: neuter doubles to
+# +tt with d-assimilation (röd/rött/röda). Adj-nocomp: positive cells only, for
+# stems with an irregular comparison (stor). Future: "liten/litet/lilla/små".
 %lex Root
-    stor  : Adj-reg  <lemma>=stor
-    snäll : Adj-reg  <lemma>=snäll
-    grön  : Adj-reg  <lemma>=grön
-    fin   : Adj-reg  <lemma>=fin
-    varm  : Adj-reg  <lemma>=varm
-    kall  : Adj-reg  <lemma>=kall
-    gul   : Adj-reg  <lemma>=gul
-    tjock : Adj-reg  <lemma>=tjock
-    stark : Adj-reg  <lemma>=stark
-    mörk  : Adj-reg  <lemma>=mörk
-    ljus  : Adj-reg  <lemma>=ljus
-    röd   : Adj-dt   <lemma>=röd
-    glad  : Adj-dt   <lemma>=glad
-    god   : Adj-dt   <lemma>=god
-    bred  : Adj-dt   <lemma>=bred
-    ny    : Adj-dt   <lemma>=ny
+    stor  : Adj-nocomp  <lemma>=stor
+    snäll : Adj-reg     <lemma>=snäll
+    grön  : Adj-reg     <lemma>=grön
+    fin   : Adj-reg     <lemma>=fin
+    varm  : Adj-reg     <lemma>=varm
+    kall  : Adj-reg     <lemma>=kall
+    gul   : Adj-reg     <lemma>=gul
+    tjock : Adj-reg     <lemma>=tjock
+    stark : Adj-reg     <lemma>=stark
+    mörk  : Adj-reg     <lemma>=mörk
+    ljus  : Adj-reg     <lemma>=ljus
+    röd   : Adj-dt      <lemma>=röd
+    glad  : Adj-dt      <lemma>=glad
+    god   : Adj-dt      <lemma>=god
+    bred  : Adj-dt      <lemma>=bred
+    ny    : Adj-dt      <lemma>=ny
 
 # --- Noun declensions ---------------------------------------------------------
 # Each paradigm is the 4-cell number x definiteness grid. `article`=req marks the
@@ -76,12 +77,37 @@
     +N+Def+Pl   : na   <gender>=neu <num>=pl <def>=def   <article>=opt
 
 # --- Adjective declension -----------------------------------------------------
+# Comparison: -are is indeclinable (it sets only `degree`, so it unifies into any
+# gender/number/definiteness slot -- "en större hund", "det större huset", "de
+# större hundarna"), while the superlative splits strong/weak on `def` like the
+# positive: strong -ast is predicative ("hunden är snällast"), weak -aste is the
+# attributive-definite form ("den snällaste hunden").
+#
+# Future: a strong superlative is predicative only, but `def`=indef also lets it
+# in attributively ("*en snällast hund" parses). Stating that needs an atomic
+# `attr` feature on the adjective cells that the attributive NP rules require --
+# the same precomputed-disjunction device as `article`; deferred until the
+# fragment has more superlatives than this to pay for it.
 # Strong (def=indef) agrees with the noun's gender/number; weak (def=def) is an
 # invariant -a that leaves gender/number open. "stora" is produced twice (strong
 # plural and weak) -- the licit ambiguity of "stora hundar" vs "den stora
 # hunden". Encoding strong/weak as `def` lets one definiteness equation concord
 # article, adjective, and noun (see the note in sv.gram).
 %lex Adj-reg : Adj
+    +Adj+Utr+Sg  :      <gender>=utr <num>=sg <def>=indef <degree>=pos   # snäll
+    +Adj+Neu+Sg  : t    <gender>=neu <num>=sg <def>=indef <degree>=pos   # snällt
+    +Adj+Pl      : a                 <num>=pl <def>=indef <degree>=pos   # snälla (indef pl)
+    +Adj+Weak    : a                          <def>=def   <degree>=pos   # snälla (definite)
+    +Adj+Comp    : are                                    <degree>=comp  # snällare
+    +Adj+Sup     : ast                        <def>=indef <degree>=sup   # snällast (strong)
+    +Adj+SupWeak : aste                       <def>=def   <degree>=sup   # snällaste (weak)
+
+# Positive cells only, for stems whose comparison no suffix can derive: "stor"
+# umlauts to större/störst, so those two forms are explicit entries in
+# adjectives.gram (the treatment English gives "good"/better/best) and this
+# paradigm keeps the engine from building "*storare". Future: liten, gammal,
+# dålig land here too once their positive irregularities are modelled.
+%lex Adj-nocomp : Adj
     +Adj+Utr+Sg :    <gender>=utr <num>=sg <def>=indef <degree>=pos   # stor
     +Adj+Neu+Sg : t  <gender>=neu <num>=sg <def>=indef <degree>=pos   # stort
     +Adj+Pl     : a              <num>=pl  <def>=indef <degree>=pos   # stora (indef pl)
@@ -94,8 +120,11 @@
 %lex Adj-dt : Adj
     +Adj+Utr+Sg :     <gender>=utr <num>=sg <def>=indef <degree>=pos   # röd
     +Adj+Neu+Sg : tt  <gender>=neu <num>=sg <def>=indef <degree>=pos   # rött
-    +Adj+Pl     : a              <num>=pl  <def>=indef <degree>=pos   # röda
-    +Adj+Weak   : a                        <def>=def   <degree>=pos   # röda (def)
+    +Adj+Pl      : a                 <num>=pl <def>=indef <degree>=pos   # röda
+    +Adj+Weak    : a                          <def>=def   <degree>=pos   # röda (def)
+    +Adj+Comp    : are                                    <degree>=comp  # rödare
+    +Adj+Sup     : ast                        <def>=indef <degree>=sup   # rödast (strong)
+    +Adj+SupWeak : aste                       <def>=def   <degree>=sup   # rödaste (weak)
 
 # --- Verb conjugations --------------------------------------------------------
 # Swedish present tense does NOT agree with the subject, so verb forms carry no

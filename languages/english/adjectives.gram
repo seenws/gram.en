@@ -12,9 +12,21 @@ too   : Deg  <initial>=cons
 so    : Deg  <initial>=cons
 quite : Deg  <initial>=cons
 
+# Periphrastic comparison. more/most are degree words that additionally demand a
+# <comp>=periph adjective, which is what keeps "*more big" out (see the note on
+# `comp` in en.gram). AdjP -> Deg Adj already routes them; the degree feature is
+# carried for reporting, nothing in the syntax constrains it.
+more  : Deg  <initial>=cons  <comp>=periph  <degree>=comp
+most  : Deg  <initial>=cons  <comp>=periph  <degree>=sup
+
 # "good" is suppletive (better/best, not *gooder/*goodest), so it stays explicit
 # and is deliberately kept out of the Adj-reg paradigm -- the engine then reports
 # "gooder" as an unknown word rather than analyzing it.
-good   : Adj  <initial>=cons  <degree>=pos   <lemma>=good
-better : Adj  <initial>=cons  <degree>=comp  <lemma>=good
-best   : Adj  <initial>=cons  <degree>=sup   <lemma>=good
+good   : Adj  <initial>=cons  <degree>=pos   <comp>=suffix  <lemma>=good
+better : Adj  <initial>=cons  <degree>=comp  <comp>=suffix  <lemma>=good
+best   : Adj  <initial>=cons  <degree>=sup   <comp>=suffix  <lemma>=good
+
+# Adjectives long enough to compare with more/most instead of -er/-est. They stay
+# out of Adj-reg so the morphology never mints "*curiouser", and <comp>=periph is
+# what lets more/most attach. Adding another is one line.
+curious : Adj  <initial>=cons  <degree>=pos  <comp>=periph  <lemma>=curious

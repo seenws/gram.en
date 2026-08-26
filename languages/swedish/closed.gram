@@ -26,6 +26,7 @@ hon   : Pron  <num>=sg  <case>=nom  <gender>=utr   <lemma>=pron.3sg.f
 henne : Pron  <num>=sg  <case>=acc  <gender>=utr   <lemma>=pron.3sg.f
 vi    : Pron  <num>=pl  <case>=nom                 <lemma>=pron.1pl
 oss   : Pron  <num>=pl  <case>=acc                 <lemma>=pron.1pl
+
 # 2nd-person "ni"/"er" are number-flexible: plural ("you all") and the polite
 # singular (which UD-Talbanken annotates Number=Sing). Like English "you", number
 # is left underspecified rather than pinned to plural -- the UD audit surfaced the
@@ -33,6 +34,7 @@ oss   : Pron  <num>=pl  <case>=acc                 <lemma>=pron.1pl
 # error. Case is kept (nom "ni" / acc "er").
 ni    : Pron            <case>=nom                 <lemma>=pron.2
 er    : Pron            <case>=acc                 <lemma>=pron.2
+
 # `de`/`dem` are the 3pl subject/object pronouns; `de` doubles as the definite
 # plural article above (two lexicon entries, like English `her`).
 de    : Pron  <num>=pl  <case>=nom                 <lemma>=pron.3pl

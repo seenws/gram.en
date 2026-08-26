@@ -257,6 +257,12 @@ function find_leaf(t: tree, cat: string): { pos: number; lemma: string | null; f
 // Future: a smarter ranking could let us tighten these once strategies are ordered
 // by likelihood rather than declaration order.
 const MAX_FIXES = 4;
+
+// Render a repaired token list the way the user would write it: a clitic the
+// tokenizer peeled off ("'s", "n't") re-attaches to the word before it.
+function join_tokens(g: grammar, toks: string[]): string {
+    return toks.reduce((acc, t, i) => (i > 0 && !g.clitics.includes(t) ? `${acc} ${t}` : acc + t), "");
+}
 const MAX_TRIES = 16;
 
 function generate_fixes(g: grammar, tokens: string[], t: tree, v: violation, base_count: number): string[] {
@@ -267,7 +273,7 @@ function generate_fixes(g: grammar, tokens: string[], t: tree, v: violation, bas
         for (const cand of candidates_for(g, strat, tokens, t, v)) {
             if (out.size >= MAX_FIXES || tried.size >= MAX_TRIES) break outer;
 
-            const key = cand.join(" ");
+            const key = join_tokens(g, cand);
 
             // a repair reachable from two strategies is parsed once, not twice
             if (tried.has(key)) continue;
@@ -363,7 +369,7 @@ function reorder_fixes(g: grammar, tokens: string[], blocks: [number, number][])
             for (let k = s; k < e; k++) cand.push(tokens[k]);
         }
 
-        if (cand.join(" ") !== tokens.join(" ") && parses_clean(g, cand)) out.add(cand.join(" "));
+        if (cand.join(" ") !== tokens.join(" ") && parses_clean(g, cand)) out.add(join_tokens(g, cand));
     }
 
     return [...out];
